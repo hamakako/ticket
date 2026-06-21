@@ -25,6 +25,8 @@ Open `http://localhost:3000`.
 
 This project is prepared for Render free web services with `render.yaml`.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/hamakako/ticket)
+
 On Render, connect this GitHub repo, create a Web Service, and add `GEMINI_API_KEY` as an environment variable. The API key stays server-side and is not exposed in the browser.
 
 Records, uploaded originals, and generated HTML files are automatically deleted after 7 days.
