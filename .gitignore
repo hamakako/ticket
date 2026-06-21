@@ -1,0 +1,9 @@
+.env
+node_modules/
+work/
+mk_itinerary.db
+mk_itinerary.db-*
+uploads/
+outputs/html/
+.DS_Store
+npm-debug.log*

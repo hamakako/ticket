@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MK Business and Travel Itinerary Generator</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block">
+      <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+      <div>
+        <h1>MK Business and Travel</h1>
+        <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="dashboard">
+      <a class="dashboard-card" href="#flight">
+        <span>1</span>
+        <div>
+          <h2>Flight Ticket</h2>
+          <p>Upload, review, save, and generate branded flight itineraries.</p>
+        </div>
+      </a>
+      <a class="dashboard-card" href="#hotel">
+        <span>2</span>
+        <div>
+          <h2>Hotel Voucher</h2>
+          <p>Upload, review, save, and generate branded hotel itineraries.</p>
+        </div>
+      </a>
+    </section>
+
+    <section id="flight" class="work-panel" data-type="flight">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Flight Ticket</p>
+          <h2>Flight itinerary workflow</h2>
+        </div>
+        <button class="secondary-button" type="button" data-reset="flight">New flight record</button>
+      </div>
+
+      <div class="workflow-grid">
+        <div class="workflow-main">
+          <div class="step-card">
+            <h3>Upload and Process</h3>
+            <div class="upload-row">
+              <input type="file" data-file="flight" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+              <button type="button" data-process="flight">Process with Gemini</button>
+            </div>
+            <p class="status" data-status="flight"></p>
+          </div>
+
+          <div class="step-card">
+            <div class="section-title-row">
+              <h3>Extracted Data Preview</h3>
+              <span data-record-label="flight">Unsaved</span>
+            </div>
+            <div data-form="flight"></div>
+            <div class="action-row">
+              <button type="button" data-save="flight">Save to Database</button>
+              <label class="design-picker">
+                Design
+                <select data-design="flight">
+                  <option value="modern">Modern</option>
+                  <option value="executive">Executive</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+              <button type="button" data-generate="flight">Generate HTML Itinerary</button>
+              <a class="download-link hidden" data-download="flight" href="#" download>Download HTML</a>
+              <a class="download-link hidden" data-open="flight" href="#" target="_blank" rel="noreferrer">Open HTML</a>
+            </div>
+          </div>
+        </div>
+
+        <aside class="history-card">
+          <h3>Previous Generated Itineraries</h3>
+          <p class="retention-note">Records and original uploads are automatically deleted after 7 days.</p>
+          <input type="search" data-search="flight" placeholder="Search passenger, PNR, flight, or date">
+          <div class="history-list" data-list="flight"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="hotel" class="work-panel" data-type="hotel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Hotel Voucher</p>
+          <h2>Hotel itinerary workflow</h2>
+        </div>
+        <button class="secondary-button" type="button" data-reset="hotel">New hotel record</button>
+      </div>
+
+      <div class="workflow-grid">
+        <div class="workflow-main">
+          <div class="step-card">
+            <h3>Upload and Process</h3>
+            <div class="upload-row">
+              <input type="file" data-file="hotel" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+              <button type="button" data-process="hotel">Process with Gemini</button>
+            </div>
+            <p class="status" data-status="hotel"></p>
+          </div>
+
+          <div class="step-card">
+            <div class="section-title-row">
+              <h3>Extracted Data Preview</h3>
+              <span data-record-label="hotel">Unsaved</span>
+            </div>
+            <div data-form="hotel"></div>
+            <div class="action-row">
+              <button type="button" data-save="hotel">Save to Database</button>
+              <label class="design-picker">
+                Design
+                <select data-design="hotel">
+                  <option value="modern">Modern</option>
+                  <option value="executive">Executive</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+              <button type="button" data-generate="hotel">Generate HTML Itinerary</button>
+              <a class="download-link hidden" data-download="hotel" href="#" download>Download HTML</a>
+              <a class="download-link hidden" data-open="hotel" href="#" target="_blank" rel="noreferrer">Open HTML</a>
+            </div>
+          </div>
+        </div>
+
+        <aside class="history-card">
+          <h3>Previous Generated Itineraries</h3>
+          <p class="retention-note">Records and original uploads are automatically deleted after 7 days.</p>
+          <input type="search" data-search="hotel" placeholder="Search guest, reference, hotel, or date">
+          <div class="history-list" data-list="hotel"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
