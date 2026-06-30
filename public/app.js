@@ -44,9 +44,6 @@ const emptyHotel = () => ({
   mapsTitle: "",
   latitude: "",
   longitude: "",
-  hotelPhotoUrl: "",
-  photoAttribution: "",
-  photoAttributionUrl: "",
   importantNotes: [],
   cancellationNotes: []
 });
@@ -267,7 +264,7 @@ async function enrichHotel() {
   const type = "hotel";
   syncForm(type);
   setBusy(type, true);
-  setStatus(type, "Finding the hotel photo and Google Maps location...");
+  setStatus(type, "Creating the hotel map link...");
   try {
     const payload = await api("/api/hotel-enrich", {
       method: "POST",
@@ -275,10 +272,9 @@ async function enrichHotel() {
     });
     state.hotel.data = payload.data;
     renderForm(type);
-    const foundPhoto = Boolean(payload.data.hotelPhotoUrl);
-    setStatus(type, foundPhoto
-      ? "Hotel photo and map found. Please review them before saving."
-      : "Map found. A Places-enabled Google Maps key is required for an automatic hotel photo.", "ok");
+    setStatus(type, payload.data.mapUrl
+      ? "Hotel map link created."
+      : "Enter the hotel name or address first.", payload.data.mapUrl ? "ok" : "error");
   } catch (error) {
     setStatus(type, error.message, "error");
   } finally {
@@ -591,16 +587,12 @@ function hotelForm(data) {
       ${field("Bedding Type", "bedding", data.bedding)}
       ${field("Meal Type", "mealType", data.mealType)}
       ${field("GPS / Location", "gps", data.gps)}
-      ${field("Hotel Photo URL", "hotelPhotoUrl", data.hotelPhotoUrl, "full-span")}
-      ${field("Google Maps URL", "mapUrl", data.mapUrl, "full-span")}
-      ${field("Photo Attribution", "photoAttribution", data.photoAttribution, "full-span")}
-      ${field("Photo Attribution URL", "photoAttributionUrl", data.photoAttributionUrl, "full-span")}
+      ${field("Map Link", "mapUrl", data.mapUrl, "full-span")}
     </div>
 
-    ${(data.hotelPhotoUrl || data.mapUrl) ? `
+    ${data.mapUrl ? `
       <div class="hotel-preview">
-        ${data.hotelPhotoUrl ? `<img src="${escapeAttribute(data.hotelPhotoUrl)}" alt="Hotel preview">` : ""}
-        ${data.mapUrl ? `<a class="download-link secondary-button" href="${escapeAttribute(data.mapUrl)}" target="_blank" rel="noreferrer">Open Map Preview</a>` : ""}
+        <a class="download-link secondary-button" href="${escapeAttribute(data.mapUrl)}" target="_blank" rel="noreferrer">Open Hotel Location</a>
       </div>
     ` : ""}
 

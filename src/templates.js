@@ -259,49 +259,15 @@ function sharedStyles() {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4mm;
     }
-    .hotel-media {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 4mm;
-      margin-top: 5mm;
-    }
-    .hotel-media.single {
-      grid-template-columns: 1fr;
-    }
-    .media-card {
-      position: relative;
-      height: 50mm;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      overflow: hidden;
-      background: #f6fbfb;
-    }
-    .media-card img,
-    .media-card iframe {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-      object-fit: cover;
-    }
-    .media-caption {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 2mm 3mm;
-      background: rgba(23, 12, 121, 0.88);
-      color: #fff;
-      font-size: 9px;
-    }
-    .media-caption a {
-      color: #fff;
-    }
     .maps-link {
       display: inline-flex;
       align-items: center;
       gap: 2mm;
-      margin-top: 2mm;
+      margin-top: 3mm;
+      padding: 2.5mm 4mm;
+      border: 1px solid var(--teal);
+      border-radius: 5px;
+      background: #f6fbfb;
       color: var(--navy);
       font-size: 11px;
       font-weight: 700;
@@ -536,42 +502,11 @@ function meaningful(value) {
   return text && text !== "Not specified" ? text : "";
 }
 
-function hotelMapEmbedUrl(data) {
-  const latitude = meaningful(data.latitude);
-  const longitude = meaningful(data.longitude);
-  const query = latitude && longitude
-    ? `${latitude},${longitude}`
-    : [meaningful(data.hotelName), meaningful(data.hotelAddress)].filter(Boolean).join(", ");
-  return query ? `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed` : "";
-}
-
 function hotelMedia(data) {
-  const photoUrl = meaningful(data.hotelPhotoUrl);
   const mapUrl = meaningful(data.mapUrl);
-  const mapEmbed = hotelMapEmbedUrl(data);
-  if (!photoUrl && !mapEmbed) return "";
-
-  const photo = photoUrl ? `
-    <div class="media-card">
-      <img src="${escapeHtml(photoUrl)}" alt="${display(data.hotelName)}">
-      <div class="media-caption">
-        Hotel photo${meaningful(data.photoAttribution) ? ` · ${meaningful(data.photoAttributionUrl)
-          ? `<a href="${escapeHtml(data.photoAttributionUrl)}" target="_blank" rel="noreferrer">${display(data.photoAttribution)}</a>`
-          : display(data.photoAttribution)}` : ""}
-      </div>
-    </div>
-  ` : "";
-
-  const map = mapEmbed ? `
-    <div>
-      <div class="media-card">
-        <iframe src="${escapeHtml(mapEmbed)}" title="Hotel map" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
-      </div>
-      ${mapUrl ? `<a class="maps-link" href="${escapeHtml(mapUrl)}" target="_blank" rel="noreferrer">Open hotel in <span class="maps-attribution" translate="no">Google Maps</span></a>` : ""}
-    </div>
-  ` : "";
-
-  return `<div class="hotel-media ${photoUrl && mapEmbed ? "" : "single"}">${photo}${map}</div>`;
+  return mapUrl
+    ? `<a class="maps-link" href="${escapeHtml(mapUrl)}" target="_blank" rel="noreferrer">Open hotel location</a>`
+    : "";
 }
 
 function flightSegmentRows(segments) {
