@@ -4,6 +4,7 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const QRCode = require("qrcode");
 
 const {
   initDatabase,
@@ -21,18 +22,28 @@ const {
   addGeneratedFile
 } = require("./src/db");
 const { extractDocument } = require("./src/gemini");
+const { enrichHotelData } = require("./src/hotel-enrichment");
+const { renderHtmlToPdf } = require("./src/pdf-generator");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
-const { generateFlightHtml, generateHotelHtml, buildFileName } = require("./src/templates");
+const {
+  generateFlightHtml,
+  generateHotelHtml,
+  generateBoardingPassHtml,
+  buildFileName
+} = require("./src/templates");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const UPLOAD_DIR = path.join(ROOT, "uploads", "originals");
+const OUTPUT_DIR = path.join(ROOT, "outputs");
 const HTML_DIR = path.join(ROOT, "outputs", "html");
+const PDF_DIR = path.join(ROOT, "outputs", "pdf");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(HTML_DIR, { recursive: true });
+fs.mkdirSync(PDF_DIR, { recursive: true });
 initDatabase();
 
 app.use(express.json({ limit: "4mb" }));
@@ -41,6 +52,11 @@ app.use("/assets", express.static(path.join(ROOT, "public", "assets")));
 app.use("/generated", express.static(HTML_DIR, {
   setHeaders(res) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+  }
+}));
+app.use("/generated-pdf", express.static(PDF_DIR, {
+  setHeaders(res) {
+    res.setHeader("Content-Type", "application/pdf");
   }
 }));
 app.use(express.static(path.join(ROOT, "public")));
@@ -85,11 +101,23 @@ function asyncRoute(handler) {
   };
 }
 
+function itineraryHtml(type, itinerary, design = "modern") {
+  return type === "flight" ? generateFlightHtml(itinerary, design) : generateHotelHtml(itinerary, design);
+}
+
+function primaryName(type, itinerary) {
+  return type === "flight" ? itinerary.passengers?.[0]?.fullName : itinerary.guests?.[0]?.fullName;
+}
+
+function referenceFor(type, itinerary) {
+  return type === "flight" ? itinerary.pnr : itinerary.referenceNumber;
+}
+
 function saveHtmlFile(type, itinerary, design = "modern") {
-  const html = type === "flight" ? generateFlightHtml(itinerary, design) : generateHotelHtml(itinerary, design);
+  const html = itineraryHtml(type, itinerary, design);
   const fileName = type === "flight"
-    ? buildFileName(itinerary.passengers?.[0]?.fullName, itinerary.pnr)
-    : buildFileName(itinerary.guests?.[0]?.fullName, itinerary.referenceNumber);
+    ? buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary))
+    : buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary));
   const filePath = path.join(HTML_DIR, fileName);
 
   fs.writeFileSync(filePath, html, "utf8");
@@ -97,7 +125,8 @@ function saveHtmlFile(type, itinerary, design = "modern") {
     itineraryType: type,
     itineraryId: itinerary.id,
     fileName,
-    filePath
+    filePath,
+    fileKind: "itinerary-html"
   });
 
   return {
@@ -106,8 +135,72 @@ function saveHtmlFile(type, itinerary, design = "modern") {
   };
 }
 
+async function savePdfFile(type, itinerary, design = "modern") {
+  const html = itineraryHtml(type, itinerary, design);
+  const fileName = buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary), "pdf");
+  const filePath = path.join(PDF_DIR, fileName);
+  await renderHtmlToPdf(html, filePath);
+  addGeneratedFile({
+    itineraryType: type,
+    itineraryId: itinerary.id,
+    fileName,
+    filePath,
+    fileKind: "itinerary-pdf"
+  });
+  return {
+    fileName,
+    url: `/generated-pdf/${encodeURIComponent(fileName)}`
+  };
+}
+
+async function saveBoardingPassFile(itinerary) {
+  const passes = [];
+  for (const segment of itinerary.segments || []) {
+    for (const passenger of itinerary.passengers || []) {
+      const qrPayload = JSON.stringify({
+        notice: "MK travel summary - not valid for boarding",
+        pnr: itinerary.pnr,
+        passenger: passenger.fullName,
+        ticketNumber: passenger.ticketNumber,
+        flight: `${segment.airline} ${segment.flightNumber}`.trim(),
+        from: segment.departureAirport,
+        to: segment.arrivalAirport,
+        date: segment.departureDate,
+        departureTime: segment.departureTime
+      });
+      const qrDataUri = await QRCode.toDataURL(qrPayload, {
+        width: 260,
+        margin: 1,
+        color: { dark: "#170C79", light: "#FFFFFF" }
+      });
+      passes.push({ passenger, segment, qrDataUri });
+    }
+  }
+
+  const html = generateBoardingPassHtml(itinerary, passes);
+  const fileName = buildFileName(
+    itinerary.passengers?.[0]?.fullName,
+    itinerary.pnr,
+    "html",
+    "Boarding_Pass"
+  );
+  const filePath = path.join(HTML_DIR, fileName);
+  fs.writeFileSync(filePath, html, "utf8");
+  addGeneratedFile({
+    itineraryType: "flight",
+    itineraryId: itinerary.id,
+    fileName,
+    filePath,
+    fileKind: "boarding-pass-html"
+  });
+  return {
+    fileName,
+    url: `/generated/${encodeURIComponent(fileName)}`
+  };
+}
+
 function deleteGeneratedFile(filePath) {
-  deleteLocalFile(filePath, HTML_DIR);
+  deleteLocalFile(filePath, OUTPUT_DIR);
 }
 
 function deleteSourceFile(filePath) {
@@ -150,11 +243,11 @@ function runExpiredCleanup() {
     const removedRecords = result.flightCount + result.hotelCount;
     if (removedRecords || generatedFiles.length || sourceFiles.length || oldOriginalUploads) {
       console.log(
-        `Monthly cleanup removed ${removedRecords} records, ${generatedFiles.length} generated HTML files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
+        `Cleanup removed ${removedRecords} records, ${generatedFiles.length} generated files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
       );
     }
   } catch (error) {
-    console.error(`Monthly cleanup failed: ${error.message}`);
+    console.error(`Cleanup failed: ${error.message}`);
   }
 }
 
@@ -176,16 +269,26 @@ app.post("/api/process/:type", upload.single("document"), asyncRoute(async (req,
     return;
   }
 
-  const data = await extractDocument(type, {
+  let data = await extractDocument(type, {
     path: req.file.path,
     mimetype: req.file.mimetype,
     originalname: req.file.originalname
   });
 
+  if (type === "hotel") {
+    data = normalizeHotelData(await enrichHotelData(data));
+  }
+
   res.json({
     data,
     sourceFile: req.file.path
   });
+}));
+
+app.post("/api/hotel-enrich", asyncRoute(async (req, res) => {
+  const normalized = normalizeHotelData(req.body?.data || {});
+  const data = normalizeHotelData(await enrichHotelData(normalized));
+  res.json({ data });
 }));
 
 app.get("/api/flight-itineraries", (req, res) => {
@@ -220,6 +323,26 @@ app.post("/api/flight-itineraries/:id/generate", (req, res) => {
   const generated = saveHtmlFile("flight", record, req.body?.design || "modern");
   res.json({ generated });
 });
+
+app.post("/api/flight-itineraries/:id/generate-pdf", asyncRoute(async (req, res) => {
+  const record = getFlightItinerary(Number(req.params.id));
+  if (!record) {
+    res.status(404).json({ error: "Flight itinerary not found." });
+    return;
+  }
+  const generated = await savePdfFile("flight", record, req.body?.design || "modern");
+  res.json({ generated });
+}));
+
+app.post("/api/flight-itineraries/:id/generate-boarding-pass", asyncRoute(async (req, res) => {
+  const record = getFlightItinerary(Number(req.params.id));
+  if (!record) {
+    res.status(404).json({ error: "Flight itinerary not found." });
+    return;
+  }
+  const generated = await saveBoardingPassFile(record);
+  res.json({ generated });
+}));
 
 app.delete("/api/flight-itineraries/:id", (req, res) => {
   const removedFiles = deleteFlightItinerary(Number(req.params.id));
@@ -260,6 +383,16 @@ app.post("/api/hotel-itineraries/:id/generate", (req, res) => {
   const generated = saveHtmlFile("hotel", record, req.body?.design || "modern");
   res.json({ generated });
 });
+
+app.post("/api/hotel-itineraries/:id/generate-pdf", asyncRoute(async (req, res) => {
+  const record = getHotelItinerary(Number(req.params.id));
+  if (!record) {
+    res.status(404).json({ error: "Hotel itinerary not found." });
+    return;
+  }
+  const generated = await savePdfFile("hotel", record, req.body?.design || "modern");
+  res.json({ generated });
+}));
 
 app.delete("/api/hotel-itineraries/:id", (req, res) => {
   const removedFiles = deleteHotelItinerary(Number(req.params.id));

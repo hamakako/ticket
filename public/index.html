@@ -72,8 +72,14 @@
                 </select>
               </label>
               <button type="button" data-generate="flight">Generate HTML Itinerary</button>
+              <button type="button" data-generate-pdf="flight">Generate PDF Itinerary</button>
+              <button class="secondary-button" type="button" data-generate-boarding="flight">Generate Boarding Pass</button>
               <a class="download-link hidden" data-download="flight" href="#" download>Download HTML</a>
               <a class="download-link hidden" data-open="flight" href="#" target="_blank" rel="noreferrer">Open HTML</a>
+              <a class="download-link hidden" data-download-pdf="flight" href="#" download>Download PDF</a>
+              <a class="download-link hidden" data-open-pdf="flight" href="#" target="_blank" rel="noreferrer">Open PDF</a>
+              <a class="download-link hidden" data-download-boarding="flight" href="#" download>Download Boarding Pass</a>
+              <a class="download-link hidden" data-open-boarding="flight" href="#" target="_blank" rel="noreferrer">Open Boarding Pass</a>
             </div>
           </div>
         </div>
@@ -114,6 +120,7 @@
             </div>
             <div data-form="hotel"></div>
             <div class="action-row">
+              <button class="secondary-button" type="button" data-enrich-hotel>Find Hotel Photo &amp; Map</button>
               <button type="button" data-save="hotel">Save to Database</button>
               <label class="design-picker">
                 Design
@@ -124,8 +131,11 @@
                 </select>
               </label>
               <button type="button" data-generate="hotel">Generate HTML Itinerary</button>
+              <button type="button" data-generate-pdf="hotel">Generate PDF Itinerary</button>
               <a class="download-link hidden" data-download="hotel" href="#" download>Download HTML</a>
               <a class="download-link hidden" data-open="hotel" href="#" target="_blank" rel="noreferrer">Open HTML</a>
+              <a class="download-link hidden" data-download-pdf="hotel" href="#" download>Download PDF</a>
+              <a class="download-link hidden" data-open-pdf="hotel" href="#" target="_blank" rel="noreferrer">Open PDF</a>
             </div>
           </div>
         </div>

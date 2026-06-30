@@ -1,7 +1,7 @@
 const emptyFlight = () => ({
   type: "flight",
   pnr: "",
-  passengers: [{ fullName: "", ticketNumber: "", passengerType: "" }],
+  passengers: [{ fullName: "", ticketNumber: "", passengerType: "", seat: "" }],
   segments: [{
     airline: "",
     flightNumber: "",
@@ -14,7 +14,10 @@ const emptyFlight = () => ({
     arrivalCity: "",
     arrivalDate: "",
     arrivalTime: "",
-    duration: ""
+    duration: "",
+    terminal: "",
+    gate: "",
+    boardingTime: ""
   }],
   baggage: { checkedBaggage: "", cabinBaggage: "" },
   importantNotes: []
@@ -36,13 +39,21 @@ const emptyHotel = () => ({
   numberOfGuests: "",
   mealType: "",
   gps: "",
+  placeId: "",
+  mapUrl: "",
+  mapsTitle: "",
+  latitude: "",
+  longitude: "",
+  hotelPhotoUrl: "",
+  photoAttribution: "",
+  photoAttributionUrl: "",
   importantNotes: [],
   cancellationNotes: []
 });
 
 const state = {
-  flight: { data: emptyFlight(), recordId: null, sourceFile: "", generated: null, design: "modern" },
-  hotel: { data: emptyHotel(), recordId: null, sourceFile: "", generated: null, design: "modern" }
+  flight: { data: emptyFlight(), recordId: null, sourceFile: "", generated: null, generatedPdf: null, boardingPass: null, design: "modern" },
+  hotel: { data: emptyHotel(), recordId: null, sourceFile: "", generated: null, generatedPdf: null, boardingPass: null, design: "modern" }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -57,6 +68,12 @@ function bindControls(type) {
   document.querySelector(`[data-process="${type}"]`).addEventListener("click", () => processDocument(type));
   document.querySelector(`[data-save="${type}"]`).addEventListener("click", () => saveRecord(type));
   document.querySelector(`[data-generate="${type}"]`).addEventListener("click", () => generateHtml(type));
+  document.querySelector(`[data-generate-pdf="${type}"]`).addEventListener("click", () => generatePdf(type));
+  if (type === "flight") {
+    document.querySelector('[data-generate-boarding="flight"]').addEventListener("click", generateBoardingPass);
+  } else {
+    document.querySelector("[data-enrich-hotel]").addEventListener("click", enrichHotel);
+  }
   document.querySelector(`[data-reset="${type}"]`).addEventListener("click", () => resetRecord(type));
   document.querySelector(`[data-design="${type}"]`).addEventListener("change", (event) => {
     state[type].design = event.target.value;
@@ -80,10 +97,14 @@ function setStatus(type, message, tone = "") {
 }
 
 function setBusy(type, isBusy) {
-  document.querySelectorAll(`[data-process="${type}"], [data-save="${type}"], [data-generate="${type}"]`)
+  document.querySelectorAll(`[data-process="${type}"], [data-save="${type}"], [data-generate="${type}"], [data-generate-pdf="${type}"], [data-generate-boarding="${type}"]`)
     .forEach((button) => {
       button.disabled = isBusy;
     });
+  if (type === "hotel") {
+    const enrichButton = document.querySelector("[data-enrich-hotel]");
+    if (enrichButton) enrichButton.disabled = isBusy;
+  }
 }
 
 async function api(path, options = {}) {
@@ -125,6 +146,8 @@ async function processDocument(type) {
     state[type].sourceFile = payload.sourceFile || "";
     state[type].recordId = null;
     state[type].generated = null;
+    state[type].generatedPdf = null;
+    state[type].boardingPass = null;
     renderForm(type);
     updateRecordLabel(type);
     updateGeneratedLinks(type);
@@ -158,6 +181,8 @@ async function saveRecord(type) {
     state[type].recordId = payload.record.id;
     state[type].sourceFile = payload.record.sourceFile || "";
     state[type].generated = payload.record.generated || null;
+    state[type].generatedPdf = payload.record.generatedPdf || null;
+    state[type].boardingPass = payload.record.boardingPass || null;
     renderForm(type);
     updateRecordLabel(type);
     updateGeneratedLinks(type);
@@ -197,6 +222,70 @@ async function generateHtml(type) {
   }
 }
 
+async function generatePdf(type) {
+  try {
+    await saveRecord(type);
+    setBusy(type, true);
+    setStatus(type, "Generating A4 PDF...");
+    const payload = await api(`/api/${type}-itineraries/${state[type].recordId}/generate-pdf`, {
+      method: "POST",
+      body: JSON.stringify({ design: getSelectedDesign(type) })
+    });
+    state[type].generatedPdf = payload.generated;
+    updateGeneratedLinks(type);
+    await loadHistory(type);
+    setStatus(type, "A4 PDF itinerary generated.", "ok");
+  } catch (error) {
+    setStatus(type, error.message, "error");
+  } finally {
+    setBusy(type, false);
+  }
+}
+
+async function generateBoardingPass() {
+  const type = "flight";
+  try {
+    await saveRecord(type);
+    setBusy(type, true);
+    setStatus(type, "Generating boarding pass HTML...");
+    const payload = await api(`/api/flight-itineraries/${state.flight.recordId}/generate-boarding-pass`, {
+      method: "POST",
+      body: JSON.stringify({})
+    });
+    state.flight.boardingPass = payload.generated;
+    updateGeneratedLinks(type);
+    await loadHistory(type);
+    setStatus(type, "Boarding pass HTML generated.", "ok");
+  } catch (error) {
+    setStatus(type, error.message, "error");
+  } finally {
+    setBusy(type, false);
+  }
+}
+
+async function enrichHotel() {
+  const type = "hotel";
+  syncForm(type);
+  setBusy(type, true);
+  setStatus(type, "Finding the hotel photo and Google Maps location...");
+  try {
+    const payload = await api("/api/hotel-enrich", {
+      method: "POST",
+      body: JSON.stringify({ data: state.hotel.data })
+    });
+    state.hotel.data = payload.data;
+    renderForm(type);
+    const foundPhoto = Boolean(payload.data.hotelPhotoUrl);
+    setStatus(type, foundPhoto
+      ? "Hotel photo and map found. Please review them before saving."
+      : "Map found. A Places-enabled Google Maps key is required for an automatic hotel photo.", "ok");
+  } catch (error) {
+    setStatus(type, error.message, "error");
+  } finally {
+    setBusy(type, false);
+  }
+}
+
 async function loadHistory(type) {
   const search = document.querySelector(`[data-search="${type}"]`)?.value || "";
   const payload = await api(`/api/${type}-itineraries?search=${encodeURIComponent(search)}`);
@@ -210,6 +299,8 @@ async function loadRecord(type, id) {
   state[type].recordId = payload.record.id;
   state[type].sourceFile = payload.record.sourceFile || "";
   state[type].generated = payload.record.generated || null;
+  state[type].generatedPdf = payload.record.generatedPdf || null;
+  state[type].boardingPass = payload.record.boardingPass || null;
   renderForm(type);
   updateRecordLabel(type);
   updateGeneratedLinks(type);
@@ -243,6 +334,8 @@ function resetRecord(type) {
     recordId: null,
     sourceFile: "",
     generated: null,
+    generatedPdf: null,
+    boardingPass: null,
     design
   };
   const file = document.querySelector(`[data-file="${type}"]`);
@@ -263,23 +356,22 @@ function updateRecordLabel(type) {
 }
 
 function updateGeneratedLinks(type) {
-  const generated = state[type].generated;
-  const download = document.querySelector(`[data-download="${type}"]`);
-  const open = document.querySelector(`[data-open="${type}"]`);
+  updateOutputLinks(type, "", state[type].generated);
+  updateOutputLinks(type, "pdf", state[type].generatedPdf);
+  if (type === "flight") updateOutputLinks(type, "boarding", state[type].boardingPass);
+}
+
+function updateOutputLinks(type, suffix, generated) {
+  const dataSuffix = suffix ? `-${suffix}` : "";
+  const download = document.querySelector(`[data-download${dataSuffix}="${type}"]`);
+  const open = document.querySelector(`[data-open${dataSuffix}="${type}"]`);
+  if (!download || !open) return;
 
   [download, open].forEach((link) => {
-    if (generated?.url) {
-      link.href = generated.url;
-      link.classList.remove("hidden");
-    } else {
-      link.href = "#";
-      link.classList.add("hidden");
-    }
+    link.href = generated?.url || "#";
+    link.classList.toggle("hidden", !generated?.url);
   });
-
-  if (generated?.fileName) {
-    download.setAttribute("download", generated.fileName);
-  }
+  if (generated?.fileName) download.setAttribute("download", generated.fileName);
 }
 
 function renderHistory(type, records) {
@@ -298,6 +390,8 @@ function renderHistory(type, records) {
       ? `${reference} · ${record.segments?.[0]?.airline || ""} ${record.segments?.[0]?.flightNumber || ""}`
       : `${reference} · ${record.hotelName || ""}`;
     const generatedUrl = record.generated?.fileName ? `/generated/${encodeURIComponent(record.generated.fileName)}` : "";
+    const generatedPdfUrl = record.generatedPdf?.fileName ? `/generated-pdf/${encodeURIComponent(record.generatedPdf.fileName)}` : "";
+    const boardingPassUrl = record.boardingPass?.fileName ? `/generated/${encodeURIComponent(record.boardingPass.fileName)}` : "";
     return `
       <div class="history-item">
         <strong>${escapeHtml(title)}</strong>
@@ -307,6 +401,8 @@ function renderHistory(type, records) {
           <button class="small-button" type="button" data-generate-existing="${type}:${record.id}">Generate</button>
           ${generatedUrl ? `<a class="small-button download-link" href="${generatedUrl}" target="_blank" rel="noreferrer">Open</a>` : ""}
           ${generatedUrl ? `<a class="small-button download-link" href="${generatedUrl}" download="${escapeHtml(record.generated.fileName)}">Download</a>` : ""}
+          ${generatedPdfUrl ? `<a class="small-button download-link" href="${generatedPdfUrl}" target="_blank" rel="noreferrer">PDF</a>` : ""}
+          ${boardingPassUrl ? `<a class="small-button download-link" href="${boardingPassUrl}" target="_blank" rel="noreferrer">Boarding Pass</a>` : ""}
           <button class="danger-button" type="button" data-delete-record="${type}:${record.id}">Delete</button>
         </div>
       </div>
@@ -349,7 +445,7 @@ function bindFormEvents(type) {
     button.addEventListener("click", () => {
       syncForm(type);
       const target = button.dataset.add;
-      if (target === "flight-passengers") state.flight.data.passengers.push({ fullName: "", ticketNumber: "", passengerType: "" });
+      if (target === "flight-passengers") state.flight.data.passengers.push({ fullName: "", ticketNumber: "", passengerType: "", seat: "" });
       if (target === "flight-segments") state.flight.data.segments.push({
         airline: "",
         flightNumber: "",
@@ -362,7 +458,10 @@ function bindFormEvents(type) {
         arrivalCity: "",
         arrivalDate: "",
         arrivalTime: "",
-        duration: ""
+        duration: "",
+        terminal: "",
+        gate: "",
+        boardingTime: ""
       });
       if (target === "hotel-guests") state.hotel.data.guests.push({ fullName: "" });
       renderForm(type);
@@ -435,6 +534,7 @@ function flightForm(data) {
             ${arrayField("Full Name", "passengers", index, "fullName", passenger.fullName)}
             ${arrayField("Ticket Number", "passengers", index, "ticketNumber", passenger.ticketNumber)}
             ${arrayField("Passenger Type", "passengers", index, "passengerType", passenger.passengerType)}
+            ${arrayField("Seat", "passengers", index, "seat", passenger.seat)}
             <div class="inline-actions">
               <button class="danger-button" type="button" data-remove="passengers:${index}">Remove</button>
             </div>
@@ -461,6 +561,9 @@ function flightForm(data) {
             ${arrayField("Arrival City", "segments", index, "arrivalCity", segment.arrivalCity)}
             ${arrayField("Arrival Date", "segments", index, "arrivalDate", segment.arrivalDate)}
             ${arrayField("Arrival Time", "segments", index, "arrivalTime", segment.arrivalTime)}
+            ${arrayField("Terminal", "segments", index, "terminal", segment.terminal)}
+            ${arrayField("Gate", "segments", index, "gate", segment.gate)}
+            ${arrayField("Boarding Time", "segments", index, "boardingTime", segment.boardingTime)}
             <div class="inline-actions full-span">
               <button class="danger-button" type="button" data-remove="segments:${index}">Remove</button>
             </div>
@@ -488,7 +591,18 @@ function hotelForm(data) {
       ${field("Bedding Type", "bedding", data.bedding)}
       ${field("Meal Type", "mealType", data.mealType)}
       ${field("GPS / Location", "gps", data.gps)}
+      ${field("Hotel Photo URL", "hotelPhotoUrl", data.hotelPhotoUrl, "full-span")}
+      ${field("Google Maps URL", "mapUrl", data.mapUrl, "full-span")}
+      ${field("Photo Attribution", "photoAttribution", data.photoAttribution, "full-span")}
+      ${field("Photo Attribution URL", "photoAttributionUrl", data.photoAttributionUrl, "full-span")}
     </div>
+
+    ${(data.hotelPhotoUrl || data.mapUrl) ? `
+      <div class="hotel-preview">
+        ${data.hotelPhotoUrl ? `<img src="${escapeAttribute(data.hotelPhotoUrl)}" alt="Hotel preview">` : ""}
+        ${data.mapUrl ? `<a class="download-link secondary-button" href="${escapeAttribute(data.mapUrl)}" target="_blank" rel="noreferrer">Open Map Preview</a>` : ""}
+      </div>
+    ` : ""}
 
     <h4 class="form-subtitle">Guests</h4>
     <div class="repeater">

@@ -316,6 +316,25 @@ label textarea {
   background: #fbfdfd;
 }
 
+.hotel-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+}
+
+.hotel-preview img {
+  width: 180px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
 .history-card {
   align-self: start;
   position: sticky;
@@ -373,7 +392,8 @@ label textarea {
   .brand-block,
   .panel-heading,
   .upload-row,
-  .action-row {
+  .action-row,
+  .hotel-preview {
     align-items: stretch;
     flex-direction: column;
   }

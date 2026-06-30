@@ -67,7 +67,7 @@ function listItems(items) {
   return `<ul>${items.map((item) => `<li>${display(item)}</li>`).join("")}</ul>`;
 }
 
-function buildFileName(name, reference) {
+function buildFileName(name, reference, extension = "html", suffix = "") {
   const safePart = (value, fallback) => {
     const raw = String(value || "").trim();
     const text = raw && raw !== "Not specified" ? raw : fallback;
@@ -78,7 +78,9 @@ function buildFileName(name, reference) {
       .slice(0, 80) || fallback;
   };
 
-  return `${safePart(name, "Passenger")}_${safePart(reference, "Reference")}.html`;
+  const safeSuffix = suffix ? `_${safePart(suffix, "File")}` : "";
+  const safeExtension = String(extension || "html").replace(/[^a-z0-9]/gi, "").toLowerCase() || "html";
+  return `${safePart(name, "Passenger")}_${safePart(reference, "Reference")}${safeSuffix}.${safeExtension}`;
 }
 
 function sharedStyles() {
@@ -256,6 +258,62 @@ function sharedStyles() {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4mm;
+    }
+    .hotel-media {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4mm;
+      margin-top: 5mm;
+    }
+    .hotel-media.single {
+      grid-template-columns: 1fr;
+    }
+    .media-card {
+      position: relative;
+      height: 50mm;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #f6fbfb;
+    }
+    .media-card img,
+    .media-card iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      object-fit: cover;
+    }
+    .media-caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 2mm 3mm;
+      background: rgba(23, 12, 121, 0.88);
+      color: #fff;
+      font-size: 9px;
+    }
+    .media-caption a {
+      color: #fff;
+    }
+    .maps-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 2mm;
+      margin-top: 2mm;
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .maps-attribution {
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 10px;
+      font-style: normal;
+      font-weight: 400;
+      color: #5e5e5e;
+      white-space: nowrap;
     }
     .section {
       margin-top: 6mm;
@@ -471,6 +529,49 @@ function brandHeader(title, meta = "") {
 
 function footer() {
   return "";
+}
+
+function meaningful(value) {
+  const text = String(value || "").trim();
+  return text && text !== "Not specified" ? text : "";
+}
+
+function hotelMapEmbedUrl(data) {
+  const latitude = meaningful(data.latitude);
+  const longitude = meaningful(data.longitude);
+  const query = latitude && longitude
+    ? `${latitude},${longitude}`
+    : [meaningful(data.hotelName), meaningful(data.hotelAddress)].filter(Boolean).join(", ");
+  return query ? `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed` : "";
+}
+
+function hotelMedia(data) {
+  const photoUrl = meaningful(data.hotelPhotoUrl);
+  const mapUrl = meaningful(data.mapUrl);
+  const mapEmbed = hotelMapEmbedUrl(data);
+  if (!photoUrl && !mapEmbed) return "";
+
+  const photo = photoUrl ? `
+    <div class="media-card">
+      <img src="${escapeHtml(photoUrl)}" alt="${display(data.hotelName)}">
+      <div class="media-caption">
+        Hotel photo${meaningful(data.photoAttribution) ? ` · ${meaningful(data.photoAttributionUrl)
+          ? `<a href="${escapeHtml(data.photoAttributionUrl)}" target="_blank" rel="noreferrer">${display(data.photoAttribution)}</a>`
+          : display(data.photoAttribution)}` : ""}
+      </div>
+    </div>
+  ` : "";
+
+  const map = mapEmbed ? `
+    <div>
+      <div class="media-card">
+        <iframe src="${escapeHtml(mapEmbed)}" title="Hotel map" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+      ${mapUrl ? `<a class="maps-link" href="${escapeHtml(mapUrl)}" target="_blank" rel="noreferrer">Open hotel in <span class="maps-attribution" translate="no">Google Maps</span></a>` : ""}
+    </div>
+  ` : "";
+
+  return `<div class="hotel-media ${photoUrl && mapEmbed ? "" : "single"}">${photo}${map}</div>`;
 }
 
 function flightSegmentRows(segments) {
@@ -694,6 +795,8 @@ function generateHotelHtml(data, design = "modern") {
         </div>
       </div>
 
+      ${hotelMedia(data)}
+
       <div class="section">
         <h3>Guest Names</h3>
         <table>
@@ -809,8 +912,120 @@ function generateHotelHtml(data, design = "modern") {
 </html>`;
 }
 
+function generateBoardingPassHtml(data, passes) {
+  const logoData = assetDataUri(LOGO_PATH, "image/png");
+  const passHtml = passes.map(({ passenger, segment, qrDataUri }) => `
+    <section class="pass-page">
+      <article class="boarding-pass">
+        <div class="main-ticket">
+          <header>
+            <div class="pass-brand">
+              <img src="${logoData}" alt="MK Business and Travel logo">
+              <div>
+                <strong>MK BUSINESS AND TRAVEL</strong>
+                <span>TRAVEL BOARDING PASS SUMMARY</span>
+              </div>
+            </div>
+            <div class="cabin">${display(segment.class)}</div>
+          </header>
+          <div class="pass-body">
+            <div class="passenger-block">
+              <span>PASSENGER</span>
+              <strong>${display(passenger.fullName)}</strong>
+              <small>${display(passenger.passengerType)} · Ticket ${display(passenger.ticketNumber)}</small>
+            </div>
+            <div class="route-block">
+              <div>
+                <span>FROM</span>
+                <strong>${display(segment.departureAirport)}</strong>
+                <small>${display(segment.departureCity)}</small>
+              </div>
+              <div class="route-line">→</div>
+              <div>
+                <span>TO</span>
+                <strong>${display(segment.arrivalAirport)}</strong>
+                <small>${display(segment.arrivalCity)}</small>
+              </div>
+            </div>
+            <div class="flight-grid">
+              <div><span>FLIGHT</span><strong>${display(segment.airline)} ${display(segment.flightNumber)}</strong></div>
+              <div><span>DATE</span><strong>${display(segment.departureDate)}</strong></div>
+              <div><span>DEPARTURE</span><strong>${display(segment.departureTime)}</strong></div>
+              <div><span>BOARDING</span><strong>${display(segment.boardingTime)}</strong></div>
+              <div><span>TERMINAL</span><strong>${display(segment.terminal)}</strong></div>
+              <div><span>GATE</span><strong>${display(segment.gate)}</strong></div>
+              <div><span>SEAT</span><strong>${display(passenger.seat)}</strong></div>
+              <div><span>PNR</span><strong>${display(data.pnr)}</strong></div>
+            </div>
+            <div class="pass-warning">NOT VALID FOR BOARDING · Travel summary only · Obtain the official airline boarding pass at check-in</div>
+          </div>
+        </div>
+        <aside class="pass-stub">
+          <div class="stub-title">BOARDING PASS</div>
+          <div><span>PASSENGER</span><strong>${display(passenger.fullName)}</strong></div>
+          <div class="stub-route"><strong>${display(segment.departureAirport)}</strong><b>→</b><strong>${display(segment.arrivalAirport)}</strong></div>
+          <div class="stub-grid">
+            <div><span>FLIGHT</span><strong>${display(segment.flightNumber)}</strong></div>
+            <div><span>GATE</span><strong>${display(segment.gate)}</strong></div>
+            <div><span>SEAT</span><strong>${display(passenger.seat)}</strong></div>
+            <div><span>TIME</span><strong>${display(segment.boardingTime)}</strong></div>
+          </div>
+          <img class="qr" src="${qrDataUri}" alt="Booking summary QR code">
+          <small>PNR ${display(data.pnr)}</small>
+        </aside>
+      </article>
+    </section>
+  `).join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boarding Pass Summary - ${display(data.pnr)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #eef4f5; color: #172033; font-family: Arial, Helvetica, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .pass-page { width: 297mm; height: 210mm; padding: 25mm 15mm; background: #f5f8f8; display: grid; place-items: center; break-after: page; page-break-after: always; }
+    .pass-page:last-child { break-after: auto; page-break-after: auto; }
+    .boarding-pass { width: 267mm; min-height: 112mm; display: grid; grid-template-columns: minmax(0, 1fr) 72mm; background: #fff; border: 1px solid #cfe1e3; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(23, 12, 121, 0.12); }
+    .main-ticket header { min-height: 24mm; padding: 5mm 7mm; display: flex; align-items: center; justify-content: space-between; background: #170C79; color: #fff; }
+    .pass-brand { display: flex; align-items: center; gap: 4mm; }
+    .pass-brand img { width: 24mm; background: #fff; border-radius: 4px; padding: 1.5mm; }
+    .pass-brand strong, .pass-brand span { display: block; }
+    .pass-brand strong { color: #fff; font-size: 18px; }
+    .pass-brand span { margin-top: 1mm; color: #bce4e6; font-size: 10px; }
+    .cabin { padding: 2mm 4mm; border: 1px solid #8ACBD0; border-radius: 4px; font-weight: 700; }
+    .pass-body { padding: 6mm 7mm 5mm; }
+    span { display: block; color: #657084; font-size: 9px; font-weight: 700; }
+    strong { display: block; color: #172033; }
+    small { color: #657084; }
+    .passenger-block strong { margin: 1mm 0; color: #170C79; font-size: 20px; }
+    .route-block { display: grid; grid-template-columns: 1fr 25mm 1fr; align-items: center; margin: 6mm 0; }
+    .route-block strong { color: #170C79; font-size: 32px; line-height: 1; }
+    .route-line { color: #56b4bf; font-size: 30px; text-align: center; }
+    .flight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4mm; padding-top: 4mm; border-top: 1px solid #dce8ea; }
+    .flight-grid strong { margin-top: 1mm; font-size: 13px; }
+    .pass-warning { margin-top: 5mm; padding: 2.5mm 3mm; border-left: 3px solid #8ACBD0; background: #f7efdc; color: #170C79; font-size: 10px; font-weight: 700; }
+    .pass-stub { padding: 6mm; border-left: 2px dashed #8ACBD0; background: #f8fcfc; display: grid; align-content: start; gap: 4mm; }
+    .stub-title { margin: -6mm -6mm 1mm; padding: 5mm 6mm; background: #8ACBD0; color: #170C79; font-size: 18px; font-weight: 800; }
+    .pass-stub strong { margin-top: 1mm; font-size: 12px; }
+    .stub-route { display: flex; align-items: center; justify-content: space-between; color: #170C79; }
+    .stub-route strong { color: #170C79; font-size: 20px; }
+    .stub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm; }
+    .qr { width: 31mm; height: 31mm; margin: 0 auto; }
+    .pass-stub > small { text-align: center; font-weight: 700; }
+    @media print { html, body { background: #fff; } .pass-page { margin: 0; box-shadow: none; } }
+  </style>
+</head>
+<body>${passHtml}</body>
+</html>`;
+}
+
 module.exports = {
   generateFlightHtml,
   generateHotelHtml,
+  generateBoardingPassHtml,
   buildFileName
 };

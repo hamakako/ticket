@@ -18,6 +18,17 @@ function cleanFreeText(value) {
   return String(value).replace(/\s+/g, " ").trim();
 }
 
+function cleanUrl(value) {
+  const text = cleanFreeText(value);
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 function asArray(value) {
   if (!Array.isArray(value)) return [];
   return value;
@@ -42,7 +53,8 @@ function normalizeFlightData(input = {}) {
     .map((passenger) => ({
       fullName: cleanText(passenger?.fullName),
       ticketNumber: cleanText(passenger?.ticketNumber),
-      passengerType: cleanText(passenger?.passengerType)
+      passengerType: cleanText(passenger?.passengerType),
+      seat: cleanText(passenger?.seat)
     }))
     .filter((passenger) => Object.values(passenger).some((value) => value !== NOT_SPECIFIED));
 
@@ -59,7 +71,10 @@ function normalizeFlightData(input = {}) {
       arrivalCity: cleanText(segment?.arrivalCity),
       arrivalDate: cleanText(segment?.arrivalDate),
       arrivalTime: cleanText(segment?.arrivalTime),
-      duration: cleanText(segment?.duration)
+      duration: cleanText(segment?.duration),
+      terminal: cleanText(segment?.terminal),
+      gate: cleanText(segment?.gate),
+      boardingTime: cleanText(segment?.boardingTime)
     }))
     .filter((segment) => Object.values(segment).some((value) => value !== NOT_SPECIFIED));
 
@@ -69,7 +84,8 @@ function normalizeFlightData(input = {}) {
     passengers: passengers.length ? passengers : [{
       fullName: NOT_SPECIFIED,
       ticketNumber: NOT_SPECIFIED,
-      passengerType: NOT_SPECIFIED
+      passengerType: NOT_SPECIFIED,
+      seat: NOT_SPECIFIED
     }],
     segments: segments.length ? segments : [{
       airline: NOT_SPECIFIED,
@@ -83,7 +99,10 @@ function normalizeFlightData(input = {}) {
       arrivalCity: NOT_SPECIFIED,
       arrivalDate: NOT_SPECIFIED,
       arrivalTime: NOT_SPECIFIED,
-      duration: NOT_SPECIFIED
+      duration: NOT_SPECIFIED,
+      terminal: NOT_SPECIFIED,
+      gate: NOT_SPECIFIED,
+      boardingTime: NOT_SPECIFIED
     }],
     baggage: {
       checkedBaggage: cleanText(baggage.checkedBaggage),
@@ -114,6 +133,14 @@ function normalizeHotelData(input = {}) {
     numberOfGuests: cleanText(input.numberOfGuests),
     mealType: cleanText(input.mealType),
     gps: cleanText(input.gps),
+    placeId: cleanFreeText(input.placeId),
+    mapUrl: cleanUrl(input.mapUrl),
+    mapsTitle: cleanFreeText(input.mapsTitle),
+    latitude: cleanFreeText(input.latitude),
+    longitude: cleanFreeText(input.longitude),
+    hotelPhotoUrl: cleanUrl(input.hotelPhotoUrl),
+    photoAttribution: cleanFreeText(input.photoAttribution),
+    photoAttributionUrl: cleanUrl(input.photoAttributionUrl),
     importantNotes: normalizeNotes(input.importantNotes),
     cancellationNotes: normalizeNotes(input.cancellationNotes)
   };

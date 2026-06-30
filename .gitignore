@@ -1,9 +1,12 @@
 .env
 node_modules/
 work/
+tmp/
 mk_itinerary.db
 mk_itinerary.db-*
 uploads/
 outputs/html/
+outputs/pdf/
+.cache/
 .DS_Store
 npm-debug.log*

@@ -35,6 +35,7 @@ function initDatabase() {
       full_name TEXT NOT NULL,
       ticket_number TEXT NOT NULL,
       passenger_type TEXT NOT NULL,
+      seat TEXT NOT NULL DEFAULT 'Not specified',
       FOREIGN KEY (flight_itinerary_id) REFERENCES flight_itineraries(id) ON DELETE CASCADE
     );
 
@@ -53,6 +54,9 @@ function initDatabase() {
       arrival_date TEXT NOT NULL,
       arrival_time TEXT NOT NULL,
       duration TEXT NOT NULL,
+      terminal TEXT NOT NULL DEFAULT 'Not specified',
+      gate TEXT NOT NULL DEFAULT 'Not specified',
+      boarding_time TEXT NOT NULL DEFAULT 'Not specified',
       FOREIGN KEY (flight_itinerary_id) REFERENCES flight_itineraries(id) ON DELETE CASCADE
     );
 
@@ -71,6 +75,14 @@ function initDatabase() {
       number_of_guests TEXT NOT NULL,
       meal_type TEXT NOT NULL,
       gps TEXT NOT NULL,
+      place_id TEXT NOT NULL DEFAULT '',
+      map_url TEXT NOT NULL DEFAULT '',
+      maps_title TEXT NOT NULL DEFAULT '',
+      latitude TEXT NOT NULL DEFAULT '',
+      longitude TEXT NOT NULL DEFAULT '',
+      hotel_photo_url TEXT NOT NULL DEFAULT '',
+      photo_attribution TEXT NOT NULL DEFAULT '',
+      photo_attribution_url TEXT NOT NULL DEFAULT '',
       important_notes_json TEXT NOT NULL DEFAULT '[]',
       cancellation_notes_json TEXT NOT NULL DEFAULT '[]',
       source_file TEXT,
@@ -91,11 +103,33 @@ function initDatabase() {
       itinerary_id INTEGER NOT NULL,
       file_name TEXT NOT NULL,
       file_path TEXT NOT NULL,
+      file_kind TEXT NOT NULL DEFAULT 'itinerary-html',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
+  ensureColumn("flight_passengers", "seat", "TEXT NOT NULL DEFAULT 'Not specified'");
+  ensureColumn("flight_segments", "terminal", "TEXT NOT NULL DEFAULT 'Not specified'");
+  ensureColumn("flight_segments", "gate", "TEXT NOT NULL DEFAULT 'Not specified'");
+  ensureColumn("flight_segments", "boarding_time", "TEXT NOT NULL DEFAULT 'Not specified'");
+  ensureColumn("hotel_itineraries", "place_id", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "map_url", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "maps_title", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "latitude", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "longitude", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "hotel_photo_url", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "photo_attribution", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("hotel_itineraries", "photo_attribution_url", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("generated_files", "file_kind", "TEXT NOT NULL DEFAULT 'itinerary-html'");
+
   return db;
+}
+
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((item) => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 function database() {
@@ -111,23 +145,23 @@ function parseJsonArray(value) {
   }
 }
 
-function latestGeneratedFile(type, itineraryId) {
+function latestGeneratedFile(type, itineraryId, fileKind = "itinerary-html") {
   return database()
     .prepare(`
       SELECT id, file_name AS fileName, file_path AS filePath, created_at AS createdAt
       FROM generated_files
-      WHERE itinerary_type = ? AND itinerary_id = ?
+      WHERE itinerary_type = ? AND itinerary_id = ? AND file_kind = ?
       ORDER BY created_at DESC, id DESC
       LIMIT 1
     `)
-    .get(type, itineraryId) || null;
+    .get(type, itineraryId, fileKind) || null;
 }
 
 function mapFlight(row) {
   if (!row) return null;
   const passengers = database()
     .prepare(`
-      SELECT full_name AS fullName, ticket_number AS ticketNumber, passenger_type AS passengerType
+      SELECT full_name AS fullName, ticket_number AS ticketNumber, passenger_type AS passengerType, seat
       FROM flight_passengers
       WHERE flight_itinerary_id = ?
       ORDER BY id
@@ -139,7 +173,7 @@ function mapFlight(row) {
       SELECT airline, flight_number AS flightNumber, class, departure_airport AS departureAirport,
         departure_city AS departureCity, departure_date AS departureDate, departure_time AS departureTime,
         arrival_airport AS arrivalAirport, arrival_city AS arrivalCity, arrival_date AS arrivalDate,
-        arrival_time AS arrivalTime, duration
+        arrival_time AS arrivalTime, duration, terminal, gate, boarding_time AS boardingTime
       FROM flight_segments
       WHERE flight_itinerary_id = ?
       ORDER BY id
@@ -159,6 +193,8 @@ function mapFlight(row) {
     importantNotes: parseJsonArray(row.important_notes_json),
     sourceFile: row.source_file || "",
     generated: latestGeneratedFile("flight", row.id),
+    generatedPdf: latestGeneratedFile("flight", row.id, "itinerary-pdf"),
+    boardingPass: latestGeneratedFile("flight", row.id, "boarding-pass-html"),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -192,10 +228,19 @@ function mapHotel(row) {
     numberOfGuests: row.number_of_guests,
     mealType: row.meal_type,
     gps: row.gps,
+    placeId: row.place_id || "",
+    mapUrl: row.map_url || "",
+    mapsTitle: row.maps_title || "",
+    latitude: row.latitude || "",
+    longitude: row.longitude || "",
+    hotelPhotoUrl: row.hotel_photo_url || "",
+    photoAttribution: row.photo_attribution || "",
+    photoAttributionUrl: row.photo_attribution_url || "",
     importantNotes: parseJsonArray(row.important_notes_json),
     cancellationNotes: parseJsonArray(row.cancellation_notes_json),
     sourceFile: row.source_file || "",
     generated: latestGeneratedFile("hotel", row.id),
+    generatedPdf: latestGeneratedFile("hotel", row.id, "itinerary-pdf"),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -203,19 +248,20 @@ function mapHotel(row) {
 
 function insertFlightChildren(id, data) {
   const passengerStmt = database().prepare(`
-    INSERT INTO flight_passengers (flight_itinerary_id, full_name, ticket_number, passenger_type)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO flight_passengers (flight_itinerary_id, full_name, ticket_number, passenger_type, seat)
+    VALUES (?, ?, ?, ?, ?)
   `);
   data.passengers.forEach((passenger) => {
-    passengerStmt.run(id, passenger.fullName, passenger.ticketNumber, passenger.passengerType);
+    passengerStmt.run(id, passenger.fullName, passenger.ticketNumber, passenger.passengerType, passenger.seat);
   });
 
   const segmentStmt = database().prepare(`
     INSERT INTO flight_segments (
       flight_itinerary_id, airline, flight_number, class, departure_airport, departure_city,
-      departure_date, departure_time, arrival_airport, arrival_city, arrival_date, arrival_time, duration
+      departure_date, departure_time, arrival_airport, arrival_city, arrival_date, arrival_time, duration,
+      terminal, gate, boarding_time
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   data.segments.forEach((segment) => {
     segmentStmt.run(
@@ -231,7 +277,10 @@ function insertFlightChildren(id, data) {
       segment.arrivalCity,
       segment.arrivalDate,
       segment.arrivalTime,
-      segment.duration
+      segment.duration,
+      segment.terminal,
+      segment.gate,
+      segment.boardingTime
     );
   });
 }
@@ -349,9 +398,10 @@ function createHotelItinerary(data, sourceFile = "") {
       INSERT INTO hotel_itineraries (
         reference_number, hotel_name, hotel_address, hotel_phone, check_in_date, check_in_time,
         check_out_date, check_out_time, room_type, bedding, number_of_guests, meal_type, gps,
+        place_id, map_url, maps_title, latitude, longitude, hotel_photo_url, photo_attribution, photo_attribution_url,
         important_notes_json, cancellation_notes_json, source_file
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.referenceNumber,
       data.hotelName,
@@ -366,6 +416,14 @@ function createHotelItinerary(data, sourceFile = "") {
       data.numberOfGuests,
       data.mealType,
       data.gps,
+      data.placeId,
+      data.mapUrl,
+      data.mapsTitle,
+      data.latitude,
+      data.longitude,
+      data.hotelPhotoUrl,
+      data.photoAttribution,
+      data.photoAttributionUrl,
       JSON.stringify(data.importantNotes),
       JSON.stringify(data.cancellationNotes),
       sourceFile
@@ -390,6 +448,8 @@ function updateHotelItinerary(id, data, sourceFile = "") {
       SET reference_number = ?, hotel_name = ?, hotel_address = ?, hotel_phone = ?,
         check_in_date = ?, check_in_time = ?, check_out_date = ?, check_out_time = ?,
         room_type = ?, bedding = ?, number_of_guests = ?, meal_type = ?, gps = ?,
+        place_id = ?, map_url = ?, maps_title = ?, latitude = ?, longitude = ?,
+        hotel_photo_url = ?, photo_attribution = ?, photo_attribution_url = ?,
         important_notes_json = ?, cancellation_notes_json = ?,
         source_file = COALESCE(NULLIF(?, ''), source_file), updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
@@ -407,6 +467,14 @@ function updateHotelItinerary(id, data, sourceFile = "") {
       data.numberOfGuests,
       data.mealType,
       data.gps,
+      data.placeId,
+      data.mapUrl,
+      data.mapsTitle,
+      data.latitude,
+      data.longitude,
+      data.hotelPhotoUrl,
+      data.photoAttribution,
+      data.photoAttributionUrl,
       JSON.stringify(data.importantNotes),
       JSON.stringify(data.cancellationNotes),
       sourceFile,
@@ -461,11 +529,11 @@ function deleteHotelItinerary(id) {
   };
 }
 
-function addGeneratedFile({ itineraryType, itineraryId, fileName, filePath }) {
+function addGeneratedFile({ itineraryType, itineraryId, fileName, filePath, fileKind = "itinerary-html" }) {
   database().prepare(`
-    INSERT INTO generated_files (itinerary_type, itinerary_id, file_name, file_path)
-    VALUES (?, ?, ?, ?)
-  `).run(itineraryType, itineraryId, fileName, filePath);
+    INSERT INTO generated_files (itinerary_type, itinerary_id, file_name, file_path, file_kind)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(itineraryType, itineraryId, fileName, filePath, fileKind);
 }
 
 function purgeExpiredItineraries(retentionDays = 7) {

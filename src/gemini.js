@@ -20,7 +20,8 @@ function schemaFor(type) {
         {
           fullName: "",
           ticketNumber: "",
-          passengerType: ""
+          passengerType: "",
+          seat: ""
         }
       ],
       segments: [
@@ -36,7 +37,10 @@ function schemaFor(type) {
           arrivalCity: "",
           arrivalDate: "",
           arrivalTime: "",
-          duration: ""
+          duration: "",
+          terminal: "",
+          gate: "",
+          boardingTime: ""
         }
       ],
       baggage: {
