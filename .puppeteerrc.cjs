@@ -1,11 +1,5 @@
 const path = require("path");
 
 module.exports = {
-  cacheDirectory: path.join(__dirname, ".cache", "puppeteer"),
-  chrome: {
-    skipDownload: true
-  },
-  "chrome-headless-shell": {
-    skipDownload: false
-  }
+  cacheDirectory: path.join(__dirname, "node_modules", ".puppeteer_cache")
 };
