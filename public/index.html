@@ -47,10 +47,18 @@
       <div class="workflow-grid">
         <div class="workflow-main">
           <div class="step-card">
-            <h3>Upload and Process</h3>
+            <h3>Upload or Paste and Process</h3>
             <div class="upload-row">
               <input type="file" data-file="flight" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
               <button type="button" data-process="flight">Process with Gemini</button>
+            </div>
+            <div class="input-divider"><span>OR</span></div>
+            <label class="paste-input">
+              Paste copied flight ticket or email text
+              <textarea data-pasted-text="flight" maxlength="100000" placeholder="Paste the complete flight confirmation or ticket details here..."></textarea>
+            </label>
+            <div class="paste-actions">
+              <button class="secondary-button" type="button" data-process-text="flight">Extract Pasted Text</button>
             </div>
             <p class="status" data-status="flight"></p>
           </div>
@@ -105,10 +113,18 @@
       <div class="workflow-grid">
         <div class="workflow-main">
           <div class="step-card">
-            <h3>Upload and Process</h3>
+            <h3>Upload or Paste and Process</h3>
             <div class="upload-row">
               <input type="file" data-file="hotel" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
               <button type="button" data-process="hotel">Process with Gemini</button>
+            </div>
+            <div class="input-divider"><span>OR</span></div>
+            <label class="paste-input">
+              Paste copied hotel voucher or email text
+              <textarea data-pasted-text="hotel" maxlength="100000" placeholder="Paste the complete hotel confirmation or voucher details here..."></textarea>
+            </label>
+            <div class="paste-actions">
+              <button class="secondary-button" type="button" data-process-text="hotel">Extract Pasted Text</button>
             </div>
             <p class="status" data-status="hotel"></p>
           </div>

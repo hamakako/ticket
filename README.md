@@ -1,6 +1,6 @@
 # MK Business and Travel Itinerary Generator
 
-Local and online Node app for generating branded HTML/PDF flight and hotel itineraries from uploaded PDFs/images, plus printable boarding-pass summaries.
+Local and online Node app for generating branded HTML/PDF flight and hotel itineraries from uploaded PDFs/images or copied email text, plus printable boarding-pass summaries.
 
 ## Environment
 
@@ -20,6 +20,8 @@ npm start
 ```
 
 Open `http://localhost:3000`.
+
+For both flights and hotels, office staff can upload a document or paste copied booking text from an email. Gemini extracts either source into the same editable review form before saving or generating an itinerary.
 
 ## Free Online Deployment
 

@@ -21,7 +21,7 @@ const {
   purgeExpiredItineraries,
   addGeneratedFile
 } = require("./src/db");
-const { extractDocument } = require("./src/gemini");
+const { extractDocument, extractText } = require("./src/gemini");
 const { enrichHotelData } = require("./src/hotel-enrichment");
 const { renderHtmlToPdf } = require("./src/pdf-generator");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
@@ -283,6 +283,21 @@ app.post("/api/process/:type", upload.single("document"), asyncRoute(async (req,
     data,
     sourceFile: req.file.path
   });
+}));
+
+app.post("/api/process-text/:type", asyncRoute(async (req, res) => {
+  const type = req.params.type;
+  if (type !== "flight" && type !== "hotel") {
+    res.status(400).json({ error: "Unknown document type." });
+    return;
+  }
+
+  let data = await extractText(type, req.body?.text);
+  if (type === "hotel") {
+    data = normalizeHotelData(await enrichHotelData(data));
+  }
+
+  res.json({ data, sourceFile: "" });
 }));
 
 app.post("/api/hotel-enrich", asyncRoute(async (req, res) => {

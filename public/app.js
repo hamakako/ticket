@@ -63,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function bindControls(type) {
   document.querySelector(`[data-process="${type}"]`).addEventListener("click", () => processDocument(type));
+  document.querySelector(`[data-process-text="${type}"]`).addEventListener("click", () => processPastedText(type));
   document.querySelector(`[data-save="${type}"]`).addEventListener("click", () => saveRecord(type));
   document.querySelector(`[data-generate="${type}"]`).addEventListener("click", () => generateHtml(type));
   document.querySelector(`[data-generate-pdf="${type}"]`).addEventListener("click", () => generatePdf(type));
@@ -94,7 +95,7 @@ function setStatus(type, message, tone = "") {
 }
 
 function setBusy(type, isBusy) {
-  document.querySelectorAll(`[data-process="${type}"], [data-save="${type}"], [data-generate="${type}"], [data-generate-pdf="${type}"], [data-generate-boarding="${type}"]`)
+  document.querySelectorAll(`[data-process="${type}"], [data-process-text="${type}"], [data-save="${type}"], [data-generate="${type}"], [data-generate-pdf="${type}"], [data-generate-boarding="${type}"]`)
     .forEach((button) => {
       button.disabled = isBusy;
     });
@@ -139,15 +140,7 @@ async function processDocument(type) {
       method: "POST",
       body: form
     });
-    state[type].data = payload.data;
-    state[type].sourceFile = payload.sourceFile || "";
-    state[type].recordId = null;
-    state[type].generated = null;
-    state[type].generatedPdf = null;
-    state[type].boardingPass = null;
-    renderForm(type);
-    updateRecordLabel(type);
-    updateGeneratedLinks(type);
+    applyExtractedData(type, payload);
     setStatus(type, "Extracted data is ready for review.", "ok");
   } catch (error) {
     setStatus(type, error.message, "error");
@@ -155,6 +148,49 @@ async function processDocument(type) {
     clearInterval(timer);
     setBusy(type, false);
   }
+}
+
+async function processPastedText(type) {
+  const input = document.querySelector(`[data-pasted-text="${type}"]`);
+  const text = input.value.trim();
+  if (text.length < 10) {
+    setStatus(type, "Please paste the ticket or hotel details first.", "error");
+    return;
+  }
+
+  setBusy(type, true);
+  const started = Date.now();
+  const timer = setInterval(() => {
+    const seconds = Math.round((Date.now() - started) / 1000);
+    setStatus(type, `Extracting pasted text with Gemini... ${seconds}s.`);
+  }, 1000);
+  setStatus(type, "Extracting pasted text with Gemini...");
+
+  try {
+    const payload = await api(`/api/process-text/${type}`, {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+    applyExtractedData(type, payload);
+    setStatus(type, "Pasted text extracted and ready for review.", "ok");
+  } catch (error) {
+    setStatus(type, error.message, "error");
+  } finally {
+    clearInterval(timer);
+    setBusy(type, false);
+  }
+}
+
+function applyExtractedData(type, payload) {
+  state[type].data = payload.data;
+  state[type].sourceFile = payload.sourceFile || "";
+  state[type].recordId = null;
+  state[type].generated = null;
+  state[type].generatedPdf = null;
+  state[type].boardingPass = null;
+  renderForm(type);
+  updateRecordLabel(type);
+  updateGeneratedLinks(type);
 }
 
 async function saveRecord(type) {
@@ -336,6 +372,8 @@ function resetRecord(type) {
   };
   const file = document.querySelector(`[data-file="${type}"]`);
   if (file) file.value = "";
+  const pastedText = document.querySelector(`[data-pasted-text="${type}"]`);
+  if (pastedText) pastedText.value = "";
   renderForm(type);
   updateRecordLabel(type);
   updateGeneratedLinks(type);

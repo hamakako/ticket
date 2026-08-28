@@ -208,6 +208,40 @@ button:disabled {
   margin-top: 12px;
 }
 
+.input-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.input-divider::before,
+.input-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
+.paste-input {
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.paste-input textarea {
+  min-height: 132px;
+  line-height: 1.45;
+}
+
+.paste-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
 input[type="file"],
 input[type="search"],
 input[type="text"],
@@ -380,6 +414,7 @@ label textarea {
   .panel-heading,
   .upload-row,
   .action-row,
+  .paste-actions,
   .hotel-preview {
     align-items: stretch;
     flex-direction: column;
