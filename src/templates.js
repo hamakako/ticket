@@ -642,6 +642,10 @@ function generateFlightProposalHtml(data, design = "modern") {
   const tripType = data.tripType === "round-trip" ? "Round trip" : "One way";
   const cabin = String(data.cabinClass || "economy").replace(/_/g, " ");
   const passengerMix = passengerMixLabel(data.passengers);
+  const hasManualIdentifiers = Boolean(data.airlinePnr || data.ticketNumber);
+  const bookingStatus = hasManualIdentifiers
+    ? "Airline identifiers entered manually by the agency. Verify them with the airline or booking provider."
+    : "Airline PNR and e-ticket number have not been supplied.";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -664,7 +668,8 @@ function generateFlightProposalHtml(data, design = "modern") {
     }
     .status-strip strong { color: #6d4a00; font-size: 11px; text-transform: uppercase; }
     .status-strip span { color: #675f50; font-size: 9.5px; text-align: right; }
-    .document-hero { grid-template-columns: minmax(0, 92mm) minmax(0, 1fr); }
+    .document-hero { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .document-hero .reference { overflow-wrap: anywhere; }
     .status-card { border-left-color: #c69422; }
     .status-card strong { color: #6d4a00; }
     .passenger-table { margin-top: 5mm; }
@@ -685,8 +690,8 @@ function generateFlightProposalHtml(data, design = "modern") {
       ${brandHeader("Flight Itinerary", "English · Visa travel plan")}
 
       <div class="status-strip">
-        <strong>Unconfirmed visa travel plan</strong>
-        <span>Booking status: not booked · Airline PNR and e-ticket number: not issued</span>
+        <strong>${hasManualIdentifiers ? "Manual booking details" : "Unconfirmed visa travel plan"}</strong>
+        <span>${escapeHtml(bookingStatus)}</span>
       </div>
 
       <div class="hero document-hero">
@@ -694,9 +699,13 @@ function generateFlightProposalHtml(data, design = "modern") {
           <h3>MK Document Reference (not airline PNR)</h3>
           <div class="reference">${display(data.reference)}</div>
         </div>
-        <div class="summary-card status-card">
-          <h3>Document Status</h3>
-          <div class="reference">UNCONFIRMED</div>
+        <div class="summary-card">
+          <h3>Airline PNR / Booking Reference</h3>
+          <div class="reference">${data.airlinePnr ? display(data.airlinePnr) : "&nbsp;"}</div>
+        </div>
+        <div class="summary-card">
+          <h3>E-ticket Number</h3>
+          <div class="reference">${data.ticketNumber ? display(data.ticketNumber) : "&nbsp;"}</div>
         </div>
       </div>
 

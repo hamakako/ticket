@@ -12,6 +12,8 @@ const resultCount = document.querySelector("[data-result-count]");
 const searchStatus = document.querySelector("[data-search-status]");
 const selectedSummary = document.querySelector("[data-selected-summary]");
 const passengerName = document.querySelector("[data-passenger-name]");
+const airlinePnr = document.querySelector("[data-airline-pnr]");
+const ticketNumber = document.querySelector("[data-ticket-number]");
 const passportInput = document.querySelector("[data-passport]");
 const extractPassportButton = document.querySelector("[data-extract-passport]");
 const bookingLinksButton = document.querySelector("[data-booking-links]");
@@ -291,6 +293,8 @@ async function generateProposal() {
         searchId: state.searchId,
         resultIndex: state.selectedIndex,
         passengerName: name,
+        airlinePnr: airlinePnr.value.trim(),
+        ticketNumber: ticketNumber.value.trim(),
         design: document.querySelector("[data-proposal-design]").value
       })
     });

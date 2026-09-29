@@ -148,6 +148,18 @@
           <input type="text" data-passenger-name maxlength="120" placeholder="As printed on passport">
         </label>
 
+        <div class="identifier-fields">
+          <label>
+            Airline PNR / Booking Reference
+            <input type="text" data-airline-pnr maxlength="20" autocomplete="off" placeholder="Enter manually">
+          </label>
+          <label>
+            E-ticket Number
+            <input type="text" data-ticket-number maxlength="30" autocomplete="off" placeholder="Enter manually">
+          </label>
+        </div>
+        <p class="manual-entry-note">These fields are never generated automatically. Enter only identifiers supplied by the airline or booking provider.</p>
+
         <label class="proposal-design">
           Travel plan design
           <select data-proposal-design>

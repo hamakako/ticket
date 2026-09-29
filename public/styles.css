@@ -993,6 +993,20 @@ label textarea {
   margin-top: 12px;
 }
 
+.identifier-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.manual-entry-note {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .proposal-actions {
   margin-top: 8px;
 }
@@ -1094,6 +1108,7 @@ label textarea {
 
   .search-fields,
   .passenger-fields,
+  .identifier-fields,
   .result-segment,
   .proposal-downloads {
     grid-template-columns: 1fr;

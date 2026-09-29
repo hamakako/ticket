@@ -175,6 +175,18 @@ function passengerName(value) {
   return name;
 }
 
+function manualBookingIdentifier(value, label, maxLength) {
+  const identifier = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase()
+    .slice(0, maxLength);
+  if (identifier && !/^[A-Z0-9][A-Z0-9 /-]*$/.test(identifier)) {
+    throw new Error(`${label} may contain only letters, numbers, spaces, hyphens, or slashes.`);
+  }
+  return identifier;
+}
+
 async function saveFlightProposalFiles(proposal, design = "modern") {
   const html = generateFlightProposalHtml(proposal, design);
   const htmlName = buildFileName(proposal.passengerName, proposal.reference, "html", "Flight_Proposal");
@@ -420,6 +432,8 @@ app.post("/api/flight-proposals/generate", asyncRoute(async (req, res) => {
   const proposal = {
     reference: proposalReference(),
     passengerName: passengerName(req.body?.passengerName),
+    airlinePnr: manualBookingIdentifier(req.body?.airlinePnr, "Airline PNR", 20),
+    ticketNumber: manualBookingIdentifier(req.body?.ticketNumber, "Ticket number", 30),
     tripType: selection.entry.tripType,
     cabinClass: selection.itinerary.cabinClass,
     passengers: selection.entry.passengers,
