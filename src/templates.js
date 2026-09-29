@@ -539,6 +539,137 @@ function flightKurdishRows(segments) {
   `).join("");
 }
 
+function durationLabel(minutes) {
+  const total = Number(minutes);
+  if (!Number.isFinite(total) || total <= 0) return "Not specified";
+  const hours = Math.floor(total / 60);
+  const remaining = total % 60;
+  return `${hours ? `${hours}h ` : ""}${remaining ? `${remaining}m` : ""}`.trim();
+}
+
+function localDateTime(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return display(text);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${match[3]} ${months[Number(match[2]) - 1]} ${match[1]} · ${match[4]}:${match[5]}`;
+}
+
+function proposalLeg(title, leg) {
+  if (!leg?.segments?.length) return "";
+  return `
+    <div class="section proposal-leg">
+      <div class="proposal-leg-heading">
+        <h3>${escapeHtml(title)}</h3>
+        <span>${display(leg.carrier)} · ${escapeHtml(durationLabel(leg.durationMinutes))}</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Airline / Flight</th>
+            <th>Route</th>
+            <th>Departure</th>
+            <th>Arrival</th>
+            <th>Aircraft</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${leg.segments.map((segment) => `
+            <tr>
+              <td><strong>${display(segment.airline || leg.carrier)}</strong><br><span class="muted">${display(`${segment.carrierCode || ""}${segment.flightNumber || ""}`)}</span></td>
+              <td><span class="route">${display(segment.departureAirport)} → ${display(segment.arrivalAirport)}</span></td>
+              <td>${localDateTime(segment.departureTime)}</td>
+              <td>${localDateTime(segment.arrivalTime)}</td>
+              <td>${display(segment.aircraft)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function generateFlightProposalHtml(data, design = "modern") {
+  const designName = normalizeDesign(design);
+  const tripType = data.tripType === "round-trip" ? "Round trip" : "One way";
+  const cabin = String(data.cabinClass || "economy").replace(/_/g, " ");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Proposal - ${display(data.reference)}</title>
+  <style>
+    ${sharedStyles()}
+    .proposal-alert {
+      margin: 0 0 6mm;
+      padding: 3.5mm 4mm;
+      border: 2px solid var(--navy);
+      border-left: 7px solid var(--teal);
+      border-radius: 6px;
+      background: #f4fbfb;
+      color: var(--navy);
+    }
+    .proposal-alert strong { display: block; font-size: 14px; text-transform: uppercase; }
+    .proposal-alert p { margin: 1.5mm 0 0; color: var(--ink); font-size: 11px; }
+    .proposal-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 6mm; }
+    .proposal-leg-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 6mm; margin-bottom: 3mm; }
+    .proposal-leg-heading h3 { margin: 0; }
+    .proposal-leg-heading span { color: var(--muted); font-size: 11px; }
+    .proposal-leg table { font-size: 10px; }
+    .proposal-leg th, .proposal-leg td { padding: 2.5mm 2mm; }
+    .proposal-note { margin-top: 6mm; padding: 4mm; border-radius: 6px; background: var(--cream); }
+    .proposal-note h3 { margin: 0 0 2mm; color: var(--navy); }
+    .proposal-note p { margin: 1mm 0; }
+    .proposal-note .rtl-note { direction: rtl; font-family: "UniSIRWAN Noor", Arial, sans-serif; font-size: 12px; }
+  </style>
+</head>
+<body class="design-${designName}">
+  <section class="page">
+    <div class="content">
+      ${brandHeader("Flight Proposal", "Reservation request")}
+
+      <div class="proposal-alert">
+        <strong>Not a confirmed booking or airline ticket</strong>
+        <p>No airline PNR or ticket number has been issued. Flight schedules and availability can change until booking is completed with the airline or provider.</p>
+      </div>
+
+      <div class="hero">
+        <div class="summary-card">
+          <h3>MK Proposal Reference</h3>
+          <div class="reference">${display(data.reference)}</div>
+        </div>
+      </div>
+
+      <div class="section grid-2 proposal-meta">
+        <div class="soft-card">
+          <div class="label">Passenger</div>
+          <strong>${display(data.passengerName)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Journey</div>
+          <strong>${escapeHtml(tripType)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Cabin</div>
+          <strong>${escapeHtml(cabin.replace(/\b\w/g, (letter) => letter.toUpperCase()))}</strong>
+        </div>
+      </div>
+
+      ${proposalLeg("Outbound flight", data.outbound)}
+      ${proposalLeg("Return flight", data.inbound)}
+
+      <div class="proposal-note">
+        <h3>Important</h3>
+        <p>This proposal is prepared from live search information and is for review only. Complete the booking with the provider before relying on the itinerary.</p>
+        <p class="rtl-note">ئەم بەڵگەنامەیە تەنها پێشنیاری گەشتە و بلیت یان دڵنیابوونەوەی حجز نییە. پێویستە حجزەکە لەلایەن فڕۆکەوانی یان دابینکەرەوە تەواو بکرێت.</p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>`;
+}
+
 function generateFlightHtml(data, design = "modern") {
   const designName = normalizeDesign(design);
   return `<!doctype html>
@@ -959,6 +1090,7 @@ function generateBoardingPassHtml(data, passes) {
 }
 
 module.exports = {
+  generateFlightProposalHtml,
   generateFlightHtml,
   generateHotelHtml,
   generateBoardingPassHtml,

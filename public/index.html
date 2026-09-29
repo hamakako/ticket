@@ -8,12 +8,18 @@
 </head>
 <body>
   <header class="app-header">
-    <div class="brand-block">
-      <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
-      <div>
-        <h1>MK Business and Travel</h1>
-        <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
-      </div>
+    <div class="brand-block brand-with-nav">
+      <a class="brand-home" href="/">
+        <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+        <div>
+          <h1>MK Business and Travel</h1>
+          <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
+        </div>
+      </a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a class="active" href="/">Itineraries</a>
+        <a href="/flight-search.html">Live Flight Search</a>
+      </nav>
     </div>
   </header>
 
@@ -31,6 +37,13 @@
         <div>
           <h2>Hotel Voucher</h2>
           <p>Upload, review, save, and generate branded hotel itineraries.</p>
+        </div>
+      </a>
+      <a class="dashboard-card" href="/flight-search.html">
+        <span>3</span>
+        <div>
+          <h2>Live Flight Search</h2>
+          <p>Search real schedules and create branded flight proposals.</p>
         </div>
       </a>
     </section>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Flight Search | MK Business and Travel</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="search-page">
+  <header class="app-header">
+    <div class="brand-block brand-with-nav">
+      <a class="brand-home" href="/">
+        <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+        <div>
+          <h1>MK Business and Travel</h1>
+          <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
+        </div>
+      </a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="/">Itineraries</a>
+        <a class="active" href="/flight-search.html">Live Flight Search</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="search-shell">
+    <section class="search-title-band">
+      <div>
+        <p class="eyebrow">Live schedules by Ignav</p>
+        <h2>Flight Search & Proposal</h2>
+        <p>Find a live itinerary, add the passenger name, and create a branded A4 proposal.</p>
+      </div>
+      <div class="proposal-badge">Not a ticketing system</div>
+    </section>
+
+    <div class="workflow-notice" role="note">
+      Generated documents are flight proposals only. A real booking is completed through the airline or provider; no airline PNR or ticket number is created here.
+    </div>
+
+    <section class="search-workspace">
+      <div class="search-column">
+        <form class="search-form-panel" data-search-form>
+          <div class="step-heading">
+            <span>1</span>
+            <div>
+              <p>Search</p>
+              <h3>Choose a live flight</h3>
+            </div>
+          </div>
+
+          <fieldset class="trip-toggle">
+            <legend>Journey type</legend>
+            <label><input type="radio" name="tripType" value="one-way" checked> One way</label>
+            <label><input type="radio" name="tripType" value="round-trip"> Round trip</label>
+          </fieldset>
+
+          <div class="search-fields">
+            <label>
+              From
+              <input type="text" name="origin" list="origin-airports" maxlength="80" autocomplete="off" placeholder="City or airport code" required>
+              <datalist id="origin-airports"></datalist>
+            </label>
+            <label>
+              To
+              <input type="text" name="destination" list="destination-airports" maxlength="80" autocomplete="off" placeholder="City or airport code" required>
+              <datalist id="destination-airports"></datalist>
+            </label>
+            <label>
+              Departure date
+              <input type="date" name="departureDate" required>
+            </label>
+            <label data-return-field class="hidden">
+              Return date
+              <input type="date" name="returnDate">
+            </label>
+            <label>
+              Adults
+              <input type="number" name="adults" min="1" max="9" value="1" required>
+            </label>
+            <label>
+              Cabin
+              <select name="cabinClass">
+                <option value="economy">Economy</option>
+                <option value="premium_economy">Premium Economy</option>
+                <option value="business">Business</option>
+                <option value="first">First</option>
+              </select>
+            </label>
+            <label>
+              Stops
+              <select name="maxStops">
+                <option value="">Any</option>
+                <option value="0">Nonstop</option>
+                <option value="1">Up to 1 stop</option>
+                <option value="2">Up to 2 stops</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="search-submit-row">
+            <button type="submit">Search Flights</button>
+            <span class="search-status" data-search-status aria-live="polite"></span>
+          </div>
+        </form>
+
+        <section class="results-panel hidden" data-results-panel>
+          <div class="results-heading">
+            <div>
+              <p class="eyebrow">Live results</p>
+              <h3>Select an itinerary</h3>
+            </div>
+            <span data-result-count></span>
+          </div>
+          <div class="flight-results" data-results></div>
+        </section>
+      </div>
+
+      <aside class="proposal-panel" data-proposal-panel>
+        <div class="step-heading">
+          <span>2</span>
+          <div>
+            <p>Passenger & document</p>
+            <h3>Create proposal</h3>
+          </div>
+        </div>
+
+        <div class="selected-flight-empty" data-selected-summary>
+          Select a flight result to continue.
+        </div>
+
+        <label class="passport-upload">
+          Passport image or PDF
+          <input type="file" data-passport accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+          <small>Gemini extracts the full name only. The upload is deleted immediately.</small>
+        </label>
+        <button class="secondary-button full-button" type="button" data-extract-passport>Extract Name from Passport</button>
+
+        <div class="input-divider"><span>OR ENTER MANUALLY</span></div>
+
+        <label>
+          Passenger full name
+          <input type="text" data-passenger-name maxlength="120" placeholder="As printed on passport">
+        </label>
+
+        <label class="proposal-design">
+          Proposal design
+          <select data-proposal-design>
+            <option value="modern">Modern</option>
+            <option value="executive">Executive</option>
+            <option value="minimal">Minimal</option>
+          </select>
+        </label>
+
+        <div class="proposal-actions">
+          <button class="secondary-button full-button" type="button" data-booking-links disabled>Show Real Booking Options</button>
+          <div class="booking-links hidden" data-booking-links-list></div>
+          <button class="full-button" type="button" data-generate-proposal disabled>Generate HTML & PDF Proposal</button>
+        </div>
+
+        <p class="proposal-status" data-proposal-status aria-live="polite"></p>
+
+        <div class="proposal-downloads hidden" data-proposal-downloads>
+          <a class="download-link" data-proposal-html href="#" download>Download HTML</a>
+          <a class="download-link" data-proposal-pdf href="#" download>Download PDF</a>
+          <a class="secondary-download" data-proposal-open href="#" target="_blank" rel="noreferrer">Open proposal</a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="/flight-search.js"></script>
+</body>
+</html>

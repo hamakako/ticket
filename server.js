@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const QRCode = require("qrcode");
@@ -21,12 +22,14 @@ const {
   purgeExpiredItineraries,
   addGeneratedFile
 } = require("./src/db");
-const { extractDocument, extractText } = require("./src/gemini");
+const { extractDocument, extractPassportName, extractText } = require("./src/gemini");
 const { enrichHotelData } = require("./src/hotel-enrichment");
+const { bookingLinks, getSelection, searchAirports, searchFlights } = require("./src/ignav");
 const { renderHtmlToPdf } = require("./src/pdf-generator");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
 const {
   generateFlightHtml,
+  generateFlightProposalHtml,
   generateHotelHtml,
   generateBoardingPassHtml,
   buildFileName
@@ -153,6 +156,46 @@ async function savePdfFile(type, itinerary, design = "modern") {
   };
 }
 
+function proposalReference() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `MKQ-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function passengerName(value) {
+  const name = String(value || "")
+    .replace(/[^\p{L}\p{M}' -]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  if (name.length < 2 || name === "Not specified") {
+    throw new Error("Please enter or extract the passenger name.");
+  }
+  return name;
+}
+
+async function saveFlightProposalFiles(proposal, design = "modern") {
+  const html = generateFlightProposalHtml(proposal, design);
+  const htmlName = buildFileName(proposal.passengerName, proposal.reference, "html", "Flight_Proposal");
+  const pdfName = buildFileName(proposal.passengerName, proposal.reference, "pdf", "Flight_Proposal");
+  const htmlPath = path.join(HTML_DIR, htmlName);
+  const pdfPath = path.join(PDF_DIR, pdfName);
+
+  try {
+    fs.writeFileSync(htmlPath, html, "utf8");
+    await renderHtmlToPdf(html, pdfPath);
+  } catch (error) {
+    deleteGeneratedFile(htmlPath);
+    deleteGeneratedFile(pdfPath);
+    throw error;
+  }
+
+  return {
+    reference: proposal.reference,
+    html: { fileName: htmlName, url: `/generated/${encodeURIComponent(htmlName)}` },
+    pdf: { fileName: pdfName, url: `/generated-pdf/${encodeURIComponent(pdfName)}` }
+  };
+}
+
 async function saveBoardingPassFile(itinerary) {
   const passes = [];
   for (const segment of itinerary.segments || []) {
@@ -231,6 +274,21 @@ function cleanupOldOriginalUploads() {
   return removed;
 }
 
+function cleanupOldFilesIn(directory) {
+  const cutoffMs = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  if (!fs.existsSync(directory)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const filePath = path.join(directory, entry.name);
+    if (fs.statSync(filePath).mtimeMs < cutoffMs) {
+      deleteGeneratedFile(filePath);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
 function runExpiredCleanup() {
   try {
     const result = purgeExpiredItineraries(RETENTION_DAYS);
@@ -239,11 +297,12 @@ function runExpiredCleanup() {
     generatedFiles.forEach(deleteGeneratedFile);
     sourceFiles.forEach(deleteSourceFile);
     const oldOriginalUploads = cleanupOldOriginalUploads();
+    const oldUntrackedOutputs = cleanupOldFilesIn(HTML_DIR) + cleanupOldFilesIn(PDF_DIR);
 
     const removedRecords = result.flightCount + result.hotelCount;
-    if (removedRecords || generatedFiles.length || sourceFiles.length || oldOriginalUploads) {
+    if (removedRecords || generatedFiles.length || sourceFiles.length || oldOriginalUploads || oldUntrackedOutputs) {
       console.log(
-        `Cleanup removed ${removedRecords} records, ${generatedFiles.length} generated files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
+        `Cleanup removed ${removedRecords} records, ${generatedFiles.length + oldUntrackedOutputs} generated files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
       );
     }
   } catch (error) {
@@ -298,6 +357,55 @@ app.post("/api/process-text/:type", asyncRoute(async (req, res) => {
   }
 
   res.json({ data, sourceFile: "" });
+}));
+
+app.get("/api/flight-search/airports", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "private, max-age=86400");
+  res.json({ airports: await searchAirports(req.query.q) });
+}));
+
+app.post("/api/flight-search", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await searchFlights(req.body));
+}));
+
+app.post("/api/flight-search/booking-links", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const links = await bookingLinks(req.body?.searchId, req.body?.resultIndex);
+  res.json({ links });
+}));
+
+app.post("/api/passport-name", upload.single("passport"), asyncRoute(async (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "Please upload a passport image or PDF first." });
+    return;
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const data = await extractPassportName({
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+      originalname: req.file.originalname
+    });
+    res.json(data);
+  } finally {
+    deleteSourceFile(req.file.path);
+  }
+}));
+
+app.post("/api/flight-proposals/generate", asyncRoute(async (req, res) => {
+  const selection = getSelection(req.body?.searchId, req.body?.resultIndex);
+  const proposal = {
+    reference: proposalReference(),
+    passengerName: passengerName(req.body?.passengerName),
+    tripType: selection.entry.tripType,
+    cabinClass: selection.itinerary.cabinClass,
+    outbound: selection.itinerary.outbound,
+    inbound: selection.itinerary.inbound
+  };
+  const generated = await saveFlightProposalFiles(proposal, req.body?.design || "modern");
+  res.json({ generated });
 }));
 
 app.post("/api/hotel-enrich", asyncRoute(async (req, res) => {
@@ -418,7 +526,9 @@ app.delete("/api/hotel-itineraries/:id", (req, res) => {
 
 app.use((err, _req, res, _next) => {
   const message = err.message || "Something went wrong.";
-  const status = message.includes("GEMINI_API_KEY") || message.includes("Upload") ? 400 : 500;
+  const status = /GEMINI_API_KEY|Upload|Please|must be|cannot be|must be different|expired|no longer available/i.test(message)
+    ? 400
+    : 500;
   res.status(status).json({ error: message });
 });
 
