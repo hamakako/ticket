@@ -117,10 +117,24 @@ function sanitizeLeg(leg) {
   };
 }
 
+function baggageCount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 0 ? Math.min(count, 9) : null;
+}
+
+function sanitizeBags(bags) {
+  if (!bags || typeof bags !== "object") return null;
+  const carryOn = baggageCount(bags.carry_on ?? bags.carryOn ?? bags.carry_on_bags);
+  const checked = baggageCount(bags.checked ?? bags.checked_bags ?? bags.checkedBags);
+  return carryOn === null && checked === null ? null : { carryOn, checked };
+}
+
 function sanitizeItinerary(itinerary, index) {
   return {
     resultIndex: index,
     cabinClass: cleanString(itinerary.cabin_class, 40) || "economy",
+    bags: sanitizeBags(itinerary.bags),
     requiresSelfTransfer: Boolean(itinerary.requires_self_transfer),
     outbound: sanitizeLeg(itinerary.outbound),
     inbound: sanitizeLeg(itinerary.inbound)

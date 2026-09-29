@@ -940,6 +940,30 @@ label textarea {
   font-weight: 700;
 }
 
+.result-baggage {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 7px;
+  background: #eef7f8;
+}
+
+.result-baggage span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.result-baggage strong {
+  color: var(--navy);
+  font-size: 12px;
+  text-align: right;
+}
+
 .selected-flight-empty {
   min-height: 76px;
   margin-bottom: 16px;
@@ -1121,9 +1145,14 @@ label textarea {
 
   .result-topline,
   .result-leg-title,
+  .result-baggage,
   .search-submit-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .result-baggage strong {
+    text-align: left;
   }
 
   .segment-line {

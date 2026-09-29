@@ -436,6 +436,7 @@ app.post("/api/flight-proposals/generate", asyncRoute(async (req, res) => {
     ticketNumber: manualBookingIdentifier(req.body?.ticketNumber, "Ticket number", 30),
     tripType: selection.entry.tripType,
     cabinClass: selection.itinerary.cabinClass,
+    bags: selection.itinerary.bags,
     passengers: selection.entry.passengers,
     outbound: selection.itinerary.outbound,
     inbound: selection.itinerary.inbound

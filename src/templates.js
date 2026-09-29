@@ -637,11 +637,20 @@ function passengerMixLabel(passengers = {}) {
     .join(" · ");
 }
 
+function proposalBaggageLabel(bags) {
+  if (!bags || (bags.carryOn === null && bags.checked === null)) return "Not specified by provider";
+  const parts = [];
+  if (bags.carryOn !== null) parts.push(`${bags.carryOn} carry-on bag${bags.carryOn === 1 ? "" : "s"}`);
+  if (bags.checked !== null) parts.push(`${bags.checked} checked bag${bags.checked === 1 ? "" : "s"}`);
+  return parts.join(" · ") || "Not specified by provider";
+}
+
 function generateFlightProposalHtml(data, design = "modern") {
   const designName = normalizeDesign(design);
   const tripType = data.tripType === "round-trip" ? "Round trip" : "One way";
   const cabin = String(data.cabinClass || "economy").replace(/_/g, " ");
   const passengerMix = passengerMixLabel(data.passengers);
+  const baggage = proposalBaggageLabel(data.bags);
   const hasManualIdentifiers = Boolean(data.airlinePnr || data.ticketNumber);
   const bookingStatus = hasManualIdentifiers
     ? "Airline identifiers entered manually by the agency. Verify them with the airline or booking provider."
@@ -673,7 +682,7 @@ function generateFlightProposalHtml(data, design = "modern") {
     .status-card { border-left-color: #c69422; }
     .status-card strong { color: #6d4a00; }
     .passenger-table { margin-top: 5mm; }
-    .proposal-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 5mm 0 0; }
+    .proposal-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 5mm 0 0; }
     .proposal-leg-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 6mm; margin-bottom: 3mm; }
     .proposal-leg-heading h3 { margin: 0; }
     .proposal-leg-heading span { color: var(--muted); font-size: 11px; }
@@ -729,6 +738,10 @@ function generateFlightProposalHtml(data, design = "modern") {
         <div class="soft-card">
           <div class="label">Cabin</div>
           <strong>${escapeHtml(cabin.replace(/\b\w/g, (letter) => letter.toUpperCase()))}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Included baggage</div>
+          <strong>${escapeHtml(baggage)}</strong>
         </div>
       </div>
 

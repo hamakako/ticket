@@ -70,6 +70,14 @@ function formatDateTime(value) {
   return `${match[3]} ${months[Number(match[2]) - 1]} ${match[1]} · ${match[4]}:${match[5]}`;
 }
 
+function baggageLabel(bags) {
+  if (!bags || (bags.carryOn === null && bags.checked === null)) return "Not specified by provider";
+  const parts = [];
+  if (bags.carryOn !== null) parts.push(`${bags.carryOn} carry-on bag${bags.carryOn === 1 ? "" : "s"}`);
+  if (bags.checked !== null) parts.push(`${bags.checked} checked bag${bags.checked === 1 ? "" : "s"}`);
+  return parts.join(" · ") || "Not specified by provider";
+}
+
 function flightCode(segment) {
   return `${segment.carrierCode || ""}${segment.flightNumber || ""}` || "Flight";
 }
@@ -136,6 +144,7 @@ function renderResults() {
         </div>
         ${legHtml("Outbound", result.outbound)}
         ${legHtml("Return", result.inbound)}
+        <div class="result-baggage"><span>Included baggage</span><strong>${escapeHtml(baggageLabel(result.bags))}</strong></div>
         ${result.requiresSelfTransfer ? '<p class="transfer-warning">This option may require a self-transfer.</p>' : ""}
       </article>
     `;
@@ -168,6 +177,7 @@ function selectResult(resultIndex) {
     <span>Selected itinerary</span>
     <strong>${escapeHtml(first.departureAirport)} → ${escapeHtml(last.arrivalAirport)}</strong>
     <small>${airlineIdentityHtml(first, state.selected.outbound.carrier)} ${escapeHtml(formatDateTime(first.departureTime))}</small>
+    <small>Included baggage: ${escapeHtml(baggageLabel(state.selected.bags))}</small>
   `;
   bindLogoFallbacks();
 }
