@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const IGNAV_BASE_URL = "https://ignav.com/api";
 const SEARCH_TTL_MS = 30 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 60000;
+const AIRPORT_LOOKUP_LIMIT = 20;
+const MAX_CITY_AIRPORTS = 8;
 const searchCache = new Map();
 
 const cityAirportGroups = [
@@ -135,10 +137,10 @@ function purgeSearchCache() {
 async function searchAirports(query) {
   const q = cleanString(query, 80);
   if (q.length < 2) return [];
-  const payload = await ignavRequest(`/airports?q=${encodeURIComponent(q)}&limit=6`);
+  const payload = await ignavRequest(`/airports?q=${encodeURIComponent(q)}&limit=${AIRPORT_LOOKUP_LIMIT}`);
   const airports = Array.isArray(payload) ? payload : payload.airports || [];
   const normalizedQuery = q.toLowerCase();
-  const groups = cityAirportGroups
+  const curatedGroups = cityAirportGroups
     .filter((group) => group.city.toLowerCase().includes(normalizedQuery) || group.code.toLowerCase().startsWith(normalizedQuery))
     .map((group) => ({
       code: group.code,
@@ -148,20 +150,59 @@ async function searchAirports(query) {
       country: group.country,
       type: "city"
     }));
-  const airportResults = airports.slice(0, 8).map((airport) => ({
-    code: cleanString(airport.code, 3),
-    codes: [cleanString(airport.code, 3)],
+  const seenCodes = new Set();
+  const airportResults = airports.map((airport) => ({
+    code: cleanString(airport.code, 3).toUpperCase(),
     name: cleanString(airport.name, 120),
     city: cleanString(airport.city, 80),
-    country: cleanString(airport.country, 3),
+    country: cleanString(airport.country, 3).toUpperCase(),
+    metroCode: cleanString(
+      airport.metro_code || airport.metroCode || airport.city_code || airport.cityCode,
+      3
+    ).toUpperCase(),
     type: "airport"
-  })).filter((airport) => /^[A-Z]{3}$/.test(airport.code));
-  return [...groups, ...airportResults].slice(0, 9);
+  })).filter((airport) => {
+    if (!/^[A-Z]{3}$/.test(airport.code) || seenCodes.has(airport.code)) return false;
+    seenCodes.add(airport.code);
+    airport.codes = [airport.code];
+    return true;
+  });
+
+  const curatedCities = new Set(curatedGroups.map((group) => `${group.city.toLowerCase()}|${group.country}`));
+  const airportsByCity = new Map();
+  for (const airport of airportResults) {
+    if (!airport.city) continue;
+    const key = `${airport.city.toLowerCase()}|${airport.country}`;
+    if (!airportsByCity.has(key)) airportsByCity.set(key, []);
+    airportsByCity.get(key).push(airport);
+  }
+
+  const dynamicGroups = [...airportsByCity.entries()].flatMap(([key, cityAirports]) => {
+    if (curatedCities.has(key) || cityAirports.length < 2) return [];
+    const metroCode = cityAirports.map((airport) => airport.metroCode).find((code) => /^[A-Z]{3}$/.test(code));
+    const codes = metroCode
+      ? [metroCode]
+      : cityAirports.map((airport) => airport.code).slice(0, MAX_CITY_AIRPORTS);
+    const first = cityAirports[0];
+    return [{
+      code: metroCode || first.code,
+      codes,
+      name: `All ${first.city} airports`,
+      city: first.city,
+      country: first.country,
+      type: "city",
+      airportCount: cityAirports.length
+    }];
+  });
+
+  const results = [...curatedGroups, ...dynamicGroups, ...airportResults]
+    .map(({ metroCode, ...airport }) => airport);
+  return results.slice(0, AIRPORT_LOOKUP_LIMIT + curatedGroups.length + dynamicGroups.length);
 }
 
 function selectedAirportCodes(value, fallback) {
   const source = Array.isArray(value) && value.length ? value : [fallback];
-  const codes = [...new Set(source.map((code) => airportCode(code)))].slice(0, 3);
+  const codes = [...new Set(source.map((code) => airportCode(code)))].slice(0, MAX_CITY_AIRPORTS);
   if (!codes.length) throw new Error("Choose a departure and arrival airport or city.");
   return codes;
 }

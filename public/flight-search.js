@@ -185,7 +185,7 @@ function airportSelection(form, fieldName) {
     .split(",")
     .map((code) => code.trim().toUpperCase())
     .filter((code) => /^[A-Z]{3}$/.test(code));
-  const primary = airportCode(input.value);
+  const primary = codes[0] || airportCode(input.value);
   return { primary, codes: codes.length ? codes : [primary] };
 }
 
@@ -334,7 +334,10 @@ function bindAirportLookup(input, options, codesInput) {
         const label = cityOption
           ? `${airport.city} - All airports (${airport.code})`
           : `${airport.city} - ${airport.name} (${airport.code})`;
-        return `<button type="button" role="option" data-airport-label="${escapeHtml(label)}" data-airport-codes="${escapeHtml((airport.codes || [airport.code]).join(","))}"><strong>${escapeHtml(label)}</strong><span>${cityOption ? "Search every listed city airport" : escapeHtml(airport.country)}</span></button>`;
+        const cityHelp = airport.airportCount > 1
+          ? `Search all ${airport.airportCount} listed city airports`
+          : "Search every airport in this city";
+        return `<button type="button" role="option" data-airport-label="${escapeHtml(label)}" data-airport-codes="${escapeHtml((airport.codes || [airport.code]).join(","))}"><strong>${escapeHtml(label)}</strong><span>${cityOption ? cityHelp : escapeHtml(airport.country)}</span></button>`;
       }).join("");
       options.classList.toggle("hidden", !options.children.length);
       input.setAttribute("aria-expanded", options.children.length ? "true" : "false");
