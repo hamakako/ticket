@@ -9,6 +9,7 @@ const memoryCache = new Map();
 const airlineCodes = new Map([
   ["turkish airlines", "TK"],
   ["ajet", "VF"],
+  ["pegasus", "PC"],
   ["pegasus airlines", "PC"],
   ["iraqi airways", "IA"],
   ["qatar airways", "QR"],
@@ -38,7 +39,7 @@ function carrierCodeFor(segment = {}) {
   if (direct) return direct;
 
   const flightNumber = String(segment.flightNumber || "").trim().toUpperCase();
-  const separatedMatch = flightNumber.match(/^([A-Z0-9]{2,3})\s*[- ]+\d/);
+  const separatedMatch = flightNumber.match(/^([A-Z0-9]{2,3})(?:\s*[-/]\s*|\s+)\d/);
   const compactIataMatch = flightNumber.match(/^([A-Z][A-Z0-9]|[0-9][A-Z])\d/);
   const compactIcaoMatch = flightNumber.match(/^([A-Z]{3})\d/);
   const flightCode = separatedMatch?.[1] || compactIataMatch?.[1] || compactIcaoMatch?.[1] || "";
