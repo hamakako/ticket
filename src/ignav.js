@@ -177,27 +177,44 @@ async function searchAirports(query) {
     airportsByCity.get(key).push(airport);
   }
 
-  const dynamicGroups = [...airportsByCity.entries()].flatMap(([key, cityAirports]) => {
-    if (curatedCities.has(key) || cityAirports.length < 2) return [];
+  function cityGroup(city, country, cityAirports) {
     const metroCode = cityAirports.map((airport) => airport.metroCode).find((code) => /^[A-Z]{3}$/.test(code));
     const codes = metroCode
       ? [metroCode]
       : cityAirports.map((airport) => airport.code).slice(0, MAX_CITY_AIRPORTS);
-    const first = cityAirports[0];
-    return [{
-      code: metroCode || first.code,
+    return {
+      code: metroCode || codes[0],
       codes,
-      name: `All ${first.city} airports`,
-      city: first.city,
-      country: first.country,
+      name: `All ${city} airports`,
+      city,
+      country,
       type: "city",
       airportCount: cityAirports.length
-    }];
+    };
+  }
+
+  const queryCityAirport = airportResults.find((airport) => airport.city.toLowerCase() === normalizedQuery);
+  const queryCityKey = queryCityAirport
+    ? `${queryCityAirport.city.toLowerCase()}|${queryCityAirport.country}`
+    : "";
+  const queryCityAirports = queryCityAirport
+    ? airportResults.filter((airport) => airport.country === queryCityAirport.country)
+    : [];
+  const queryCityGroup = queryCityAirport
+    && !curatedCities.has(queryCityKey)
+    && queryCityAirports.length > 1
+    ? [cityGroup(queryCityAirport.city, queryCityAirport.country, queryCityAirports)]
+    : [];
+
+  const dynamicGroups = [...airportsByCity.entries()].flatMap(([key, cityAirports]) => {
+    if (key === queryCityKey || curatedCities.has(key) || cityAirports.length < 2) return [];
+    const first = cityAirports[0];
+    return [cityGroup(first.city, first.country, cityAirports)];
   });
 
-  const results = [...curatedGroups, ...dynamicGroups, ...airportResults]
+  const results = [...curatedGroups, ...queryCityGroup, ...dynamicGroups, ...airportResults]
     .map(({ metroCode, ...airport }) => airport);
-  return results.slice(0, AIRPORT_LOOKUP_LIMIT + curatedGroups.length + dynamicGroups.length);
+  return results.slice(0, AIRPORT_LOOKUP_LIMIT + curatedGroups.length + queryCityGroup.length + dynamicGroups.length);
 }
 
 function selectedAirportCodes(value, fallback) {
