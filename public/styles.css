@@ -630,6 +630,111 @@ label textarea {
   padding: 9px 11px;
 }
 
+.airport-picker {
+  position: relative;
+}
+
+.airport-options {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(23, 12, 121, 0.14);
+  padding: 5px;
+}
+
+.airport-options button {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.airport-options button:hover,
+.airport-options button:focus-visible {
+  background: #eef7f8;
+}
+
+.airport-options strong,
+.airport-options span {
+  display: block;
+}
+
+.airport-options strong {
+  color: var(--navy);
+  font-size: 12px;
+}
+
+.airport-options span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.passenger-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 150px));
+  gap: 12px;
+  margin: 15px 0 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfd;
+}
+
+.passenger-fields legend {
+  padding: 0 6px;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.passenger-fields label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+}
+
+.passenger-fields small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.passenger-fields input {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.flatpickr-calendar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(23, 12, 121, 0.16);
+  font-family: inherit;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  border-color: var(--navy);
+  background: var(--navy);
+}
+
 .search-submit-row {
   display: flex;
   align-items: center;
@@ -704,6 +809,49 @@ label textarea {
   color: var(--navy);
   font-size: 16px;
   font-weight: 800;
+}
+
+.search-airline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.search-airline img,
+.search-airline-fallback {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.search-airline-fallback {
+  display: grid;
+  place-items: center;
+  background: #eef7f8;
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0;
+}
+
+.segment-flight > .search-airline {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.segment-flight .search-airline img,
+.segment-flight .search-airline-fallback,
+.selected-flight-empty .search-airline img,
+.selected-flight-empty .search-airline-fallback {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
 }
 
 .result-meta {
@@ -822,6 +970,11 @@ label textarea {
   margin-top: 3px;
 }
 
+.selected-flight-empty .search-airline {
+  display: inline-flex;
+  margin-right: 6px;
+}
+
 .passport-upload small {
   color: var(--muted);
   font-weight: 400;
@@ -861,6 +1014,13 @@ label textarea {
   text-decoration: none;
   font-size: 13px;
   font-weight: 800;
+}
+
+.retention-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .booking-links a {
@@ -933,6 +1093,7 @@ label textarea {
   }
 
   .search-fields,
+  .passenger-fields,
   .result-segment,
   .proposal-downloads {
     grid-template-columns: 1fr;

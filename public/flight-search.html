@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Live Flight Search | MK Business and Travel</title>
+  <link rel="stylesheet" href="/vendor/flatpickr/flatpickr.min.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="search-page">
@@ -27,14 +28,14 @@
     <section class="search-title-band">
       <div>
         <p class="eyebrow">Live schedules by Ignav</p>
-        <h2>Flight Search & Proposal</h2>
-        <p>Find a live itinerary, add the passenger name, and create a branded A4 proposal.</p>
+        <h2>Flight Search & Visa Travel Plan</h2>
+        <p>Find a live itinerary, add the passenger name, and create a branded English A4 travel plan.</p>
       </div>
-      <div class="proposal-badge">Not a ticketing system</div>
+      <div class="proposal-badge">Live schedule planning</div>
     </section>
 
     <div class="workflow-notice" role="note">
-      Generated documents are flight proposals only. A real booking is completed through the airline or provider; no airline PNR or ticket number is created here.
+      Documents created here are unconfirmed visa travel plans. Complete the booking through the airline or provider to receive an airline PNR and e-ticket number.
     </div>
 
     <section class="search-workspace">
@@ -55,27 +56,25 @@
           </fieldset>
 
           <div class="search-fields">
-            <label>
+            <label class="airport-picker">
               From
-              <input type="text" name="origin" list="origin-airports" maxlength="80" autocomplete="off" placeholder="City or airport code" required>
-              <datalist id="origin-airports"></datalist>
+              <input type="text" name="origin" maxlength="80" autocomplete="off" placeholder="City or airport" role="combobox" aria-autocomplete="list" aria-controls="origin-airports" aria-expanded="false" data-airport-input required>
+              <input type="hidden" name="originAirports">
+              <div class="airport-options hidden" id="origin-airports" role="listbox" data-airport-options></div>
             </label>
-            <label>
+            <label class="airport-picker">
               To
-              <input type="text" name="destination" list="destination-airports" maxlength="80" autocomplete="off" placeholder="City or airport code" required>
-              <datalist id="destination-airports"></datalist>
+              <input type="text" name="destination" maxlength="80" autocomplete="off" placeholder="City or airport" role="combobox" aria-autocomplete="list" aria-controls="destination-airports" aria-expanded="false" data-airport-input required>
+              <input type="hidden" name="destinationAirports">
+              <div class="airport-options hidden" id="destination-airports" role="listbox" data-airport-options></div>
             </label>
             <label>
               Departure date
-              <input type="date" name="departureDate" required>
+              <input type="text" name="departureDate" autocomplete="off" placeholder="Choose date" required>
             </label>
             <label data-return-field class="hidden">
               Return date
-              <input type="date" name="returnDate">
-            </label>
-            <label>
-              Adults
-              <input type="number" name="adults" min="1" max="9" value="1" required>
+              <input type="text" name="returnDate" autocomplete="off" placeholder="Choose date">
             </label>
             <label>
               Cabin
@@ -96,6 +95,13 @@
               </select>
             </label>
           </div>
+
+          <fieldset class="passenger-fields">
+            <legend>Passengers</legend>
+            <label>Adults <small>12+ years</small><input type="number" name="adults" min="1" max="9" value="1" required></label>
+            <label>Children <small>2-11 years</small><input type="number" name="children" min="0" max="8" value="0"></label>
+            <label>Infants <small>Under 2, on lap</small><input type="number" name="infantsOnLap" min="0" max="8" value="0"></label>
+          </fieldset>
 
           <div class="search-submit-row">
             <button type="submit">Search Flights</button>
@@ -120,7 +126,7 @@
           <span>2</span>
           <div>
             <p>Passenger & document</p>
-            <h3>Create proposal</h3>
+            <h3>Create visa travel plan</h3>
           </div>
         </div>
 
@@ -143,7 +149,7 @@
         </label>
 
         <label class="proposal-design">
-          Proposal design
+          Travel plan design
           <select data-proposal-design>
             <option value="modern">Modern</option>
             <option value="executive">Executive</option>
@@ -154,7 +160,7 @@
         <div class="proposal-actions">
           <button class="secondary-button full-button" type="button" data-booking-links disabled>Show Real Booking Options</button>
           <div class="booking-links hidden" data-booking-links-list></div>
-          <button class="full-button" type="button" data-generate-proposal disabled>Generate HTML & PDF Proposal</button>
+          <button class="full-button" type="button" data-generate-proposal disabled>Generate English HTML & PDF</button>
         </div>
 
         <p class="proposal-status" data-proposal-status aria-live="polite"></p>
@@ -162,12 +168,14 @@
         <div class="proposal-downloads hidden" data-proposal-downloads>
           <a class="download-link" data-proposal-html href="#" download>Download HTML</a>
           <a class="download-link" data-proposal-pdf href="#" download>Download PDF</a>
-          <a class="secondary-download" data-proposal-open href="#" target="_blank" rel="noreferrer">Open proposal</a>
+          <a class="secondary-download" data-proposal-open href="#" target="_blank" rel="noreferrer">Open travel plan</a>
         </div>
+        <p class="retention-note">Generated live-search documents are automatically deleted after 15 days.</p>
       </aside>
     </section>
   </main>
 
+  <script src="/vendor/flatpickr/flatpickr.min.js"></script>
   <script src="/flight-search.js"></script>
 </body>
 </html>

@@ -72,6 +72,24 @@ function flightCode(segment) {
   return `${segment.carrierCode || ""}${segment.flightNumber || ""}` || "Flight";
 }
 
+function airlineIdentityHtml(segment = {}, fallback = "") {
+  const airline = segment.airline || fallback || "Airline";
+  const code = String(segment.carrierCode || "").toUpperCase();
+  const logoUrl = segment.logoUrl || (/^[A-Z0-9]{2,3}$/.test(code) ? `/api/airline-logo/${code}` : "");
+  return `
+    <span class="search-airline">
+      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(airline)} logo" loading="lazy" data-airline-logo>` : `<span class="search-airline-fallback">${escapeHtml((code || airline).slice(0, 2).toUpperCase())}</span>`}
+      <span>${escapeHtml(airline)}</span>
+    </span>
+  `;
+}
+
+function bindLogoFallbacks() {
+  document.querySelectorAll("img[data-airline-logo]").forEach((image) => {
+    image.addEventListener("error", () => image.remove(), { once: true });
+  });
+}
+
 function legHtml(title, leg) {
   if (!leg?.segments?.length) return "";
   return `
@@ -84,7 +102,7 @@ function legHtml(title, leg) {
         <div class="result-segment">
           <div class="segment-flight">
             <strong>${escapeHtml(flightCode(segment))}</strong>
-            <span>${escapeHtml(segment.airline || leg.carrier || "")}</span>
+            ${airlineIdentityHtml(segment, leg.carrier)}
           </div>
           <div class="segment-airport">
             <strong>${escapeHtml(segment.departureAirport)}</strong>
@@ -109,7 +127,7 @@ function renderResults() {
       <article class="flight-result ${selected ? "selected" : ""}">
         <div class="result-topline">
           <div>
-            <span class="result-carrier">${escapeHtml(result.outbound?.carrier || "Flight option")}</span>
+            <span class="result-carrier">${airlineIdentityHtml(result.outbound?.segments?.[0], result.outbound?.carrier || "Flight option")}</span>
             <span class="result-meta">${escapeHtml(result.cabinClass.replace(/_/g, " "))} · ${stops ? `${stops} stop${stops > 1 ? "s" : ""}` : "Nonstop"}</span>
           </div>
           <button class="${selected ? "selected-button" : "secondary-button"}" type="button" data-select-result="${result.resultIndex}">${selected ? "Selected" : "Select"}</button>
@@ -124,6 +142,7 @@ function renderResults() {
   document.querySelectorAll("[data-select-result]").forEach((button) => {
     button.addEventListener("click", () => selectResult(Number(button.dataset.selectResult)));
   });
+  bindLogoFallbacks();
 }
 
 function selectResult(resultIndex) {
@@ -133,7 +152,7 @@ function selectResult(resultIndex) {
   bookingLinksList.classList.add("hidden");
   bookingLinksList.innerHTML = "";
   downloads.classList.add("hidden");
-  setStatus(proposalStatus, "Flight selected. Add the passenger name to generate the proposal.", "ok");
+  setStatus(proposalStatus, "Flight selected. Add the passenger name to generate the travel plan.", "ok");
   bookingLinksButton.disabled = !state.selected;
   generateButton.disabled = !state.selected;
 
@@ -146,13 +165,26 @@ function selectResult(resultIndex) {
   selectedSummary.innerHTML = `
     <span>Selected itinerary</span>
     <strong>${escapeHtml(first.departureAirport)} → ${escapeHtml(last.arrivalAirport)}</strong>
-    <small>${escapeHtml(first.airline || state.selected.outbound.carrier)} · ${escapeHtml(formatDateTime(first.departureTime))}</small>
+    <small>${airlineIdentityHtml(first, state.selected.outbound.carrier)} ${escapeHtml(formatDateTime(first.departureTime))}</small>
   `;
+  bindLogoFallbacks();
 }
 
 function airportCode(value) {
-  const match = String(value || "").toUpperCase().match(/\b([A-Z]{3})\b/);
-  return match ? match[1] : String(value || "").trim().toUpperCase();
+  const text = String(value || "").trim().toUpperCase();
+  const parenthesized = text.match(/\(([A-Z]{3})\)\s*$/);
+  if (parenthesized) return parenthesized[1];
+  return /^[A-Z]{3}$/.test(text) ? text : text.slice(0, 3);
+}
+
+function airportSelection(form, fieldName) {
+  const input = form.elements[fieldName];
+  const codes = String(form.elements[`${fieldName}Airports`]?.value || "")
+    .split(",")
+    .map((code) => code.trim().toUpperCase())
+    .filter((code) => /^[A-Z]{3}$/.test(code));
+  const primary = airportCode(input.value);
+  return { primary, codes: codes.length ? codes : [primary] };
 }
 
 async function search(event) {
@@ -160,13 +192,19 @@ async function search(event) {
   const submit = searchForm.querySelector('button[type="submit"]');
   const form = new FormData(searchForm);
   const tripType = form.get("tripType");
+  const origin = airportSelection(searchForm, "origin");
+  const destination = airportSelection(searchForm, "destination");
   const body = {
     tripType,
-    origin: airportCode(form.get("origin")),
-    destination: airportCode(form.get("destination")),
+    origin: origin.primary,
+    originAirports: origin.codes,
+    destination: destination.primary,
+    destinationAirports: destination.codes,
     departureDate: form.get("departureDate"),
     returnDate: tripType === "round-trip" ? form.get("returnDate") : "",
     adults: form.get("adults"),
+    children: form.get("children"),
+    infantsOnLap: form.get("infantsOnLap"),
     cabinClass: form.get("cabinClass"),
     maxStops: form.get("maxStops")
   };
@@ -246,7 +284,7 @@ async function generateProposal() {
   }
   try {
     setBusy(generateButton, true, "Generating A4 files...");
-    setStatus(proposalStatus, "Creating branded HTML and PDF proposals...");
+    setStatus(proposalStatus, "Creating the branded English HTML and PDF travel plan...");
     const payload = await api("/api/flight-proposals/generate", {
       method: "POST",
       body: JSON.stringify({
@@ -260,7 +298,7 @@ async function generateProposal() {
     document.querySelector("[data-proposal-pdf]").href = payload.generated.pdf.url;
     document.querySelector("[data-proposal-open]").href = payload.generated.html.url;
     downloads.classList.remove("hidden");
-    setStatus(proposalStatus, `Proposal ${payload.generated.reference} is ready.`, "ok");
+    setStatus(proposalStatus, `Travel plan ${payload.generated.reference} is ready.`, "ok");
   } catch (error) {
     setStatus(proposalStatus, error.message, "error");
   } finally {
@@ -276,43 +314,100 @@ function debounce(callback, delay = 300) {
   };
 }
 
-function bindAirportLookup(input, datalist) {
+function bindAirportLookup(input, options, codesInput) {
   input.addEventListener("input", debounce(async () => {
+    codesInput.value = "";
     const query = input.value.trim();
-    if (query.length < 2) return;
+    if (query.length < 2) {
+      options.classList.add("hidden");
+      input.setAttribute("aria-expanded", "false");
+      return;
+    }
     try {
       const payload = await api(`/api/flight-search/airports?q=${encodeURIComponent(query)}`);
-      datalist.innerHTML = (payload.airports || []).map((airport) => (
-        `<option value="${escapeHtml(airport.code)}">${escapeHtml(`${airport.city} · ${airport.name} (${airport.country})`)}</option>`
-      )).join("");
+      options.innerHTML = (payload.airports || []).map((airport) => {
+        const cityOption = airport.type === "city";
+        const label = cityOption
+          ? `${airport.city} - All airports (${airport.code})`
+          : `${airport.city} - ${airport.name} (${airport.code})`;
+        return `<button type="button" role="option" data-airport-label="${escapeHtml(label)}" data-airport-codes="${escapeHtml((airport.codes || [airport.code]).join(","))}"><strong>${escapeHtml(label)}</strong><span>${cityOption ? "Search every listed city airport" : escapeHtml(airport.country)}</span></button>`;
+      }).join("");
+      options.classList.toggle("hidden", !options.children.length);
+      input.setAttribute("aria-expanded", options.children.length ? "true" : "false");
+      options.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          input.value = button.dataset.airportLabel;
+          codesInput.value = button.dataset.airportCodes;
+          options.classList.add("hidden");
+          input.setAttribute("aria-expanded", "false");
+        });
+      });
     } catch {
-      datalist.innerHTML = "";
+      options.innerHTML = "";
+      options.classList.add("hidden");
+      input.setAttribute("aria-expanded", "false");
     }
   }));
+
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      options.classList.add("hidden");
+      input.setAttribute("aria-expanded", "false");
+    }, 120);
+  });
 }
 
 function initialize() {
-  const today = new Date().toISOString().slice(0, 10);
   const departureInput = searchForm.elements.departureDate;
   const returnInput = searchForm.elements.returnDate;
-  departureInput.min = today;
-  returnInput.min = today;
-  departureInput.addEventListener("change", () => {
-    returnInput.min = departureInput.value || today;
-    if (returnInput.value && returnInput.value < returnInput.min) returnInput.value = returnInput.min;
-  });
+  let returnPicker;
+
+  if (window.flatpickr) {
+    returnPicker = window.flatpickr(returnInput, {
+      altInput: true,
+      altFormat: "D, d M Y",
+      dateFormat: "Y-m-d",
+      minDate: "today",
+      disableMobile: true
+    });
+    window.flatpickr(departureInput, {
+      altInput: true,
+      altFormat: "D, d M Y",
+      dateFormat: "Y-m-d",
+      minDate: "today",
+      disableMobile: true,
+      onChange: (_dates, dateText) => {
+        returnPicker.set("minDate", dateText || "today");
+        if (returnInput.value && returnInput.value < dateText) returnPicker.setDate(dateText);
+      }
+    });
+  } else {
+    departureInput.type = "date";
+    returnInput.type = "date";
+    const today = new Date().toISOString().slice(0, 10);
+    departureInput.min = today;
+    returnInput.min = today;
+    departureInput.addEventListener("change", () => {
+      returnInput.min = departureInput.value || today;
+      if (returnInput.value && returnInput.value < returnInput.min) returnInput.value = returnInput.min;
+    });
+  }
 
   searchForm.querySelectorAll('input[name="tripType"]').forEach((radio) => {
     radio.addEventListener("change", () => {
       const roundTrip = searchForm.elements.tripType.value === "round-trip";
       document.querySelector("[data-return-field]").classList.toggle("hidden", !roundTrip);
       returnInput.required = roundTrip;
-      if (!roundTrip) returnInput.value = "";
+      if (!roundTrip) {
+        if (returnPicker) returnPicker.clear();
+        else returnInput.value = "";
+      }
     });
   });
 
-  bindAirportLookup(searchForm.elements.origin, document.querySelector("#origin-airports"));
-  bindAirportLookup(searchForm.elements.destination, document.querySelector("#destination-airports"));
+  bindAirportLookup(searchForm.elements.origin, document.querySelector("#origin-airports"), searchForm.elements.originAirports);
+  bindAirportLookup(searchForm.elements.destination, document.querySelector("#destination-airports"), searchForm.elements.destinationAirports);
   searchForm.addEventListener("submit", search);
   extractPassportButton.addEventListener("click", extractPassport);
   bookingLinksButton.addEventListener("click", loadBookingLinks);

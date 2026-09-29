@@ -7,6 +7,7 @@ mk_itinerary.db-*
 uploads/
 outputs/html/
 outputs/pdf/
+public/assets/airlines/
 .cache/
 .DS_Store
 npm-debug.log*

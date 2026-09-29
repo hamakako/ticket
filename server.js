@@ -25,6 +25,7 @@ const {
 const { extractDocument, extractPassportName, extractText } = require("./src/gemini");
 const { enrichHotelData } = require("./src/hotel-enrichment");
 const { bookingLinks, getSelection, searchAirports, searchFlights } = require("./src/ignav");
+const { airlineLogo, normalizedCode, withAirlineLogos } = require("./src/airline-logos");
 const { renderHtmlToPdf } = require("./src/pdf-generator");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
 const {
@@ -43,6 +44,7 @@ const OUTPUT_DIR = path.join(ROOT, "outputs");
 const HTML_DIR = path.join(ROOT, "outputs", "html");
 const PDF_DIR = path.join(ROOT, "outputs", "pdf");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
+const PROPOSAL_RETENTION_DAYS = Number(process.env.PROPOSAL_RETENTION_DAYS || 15);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(HTML_DIR, { recursive: true });
@@ -52,6 +54,7 @@ initDatabase();
 app.use(express.json({ limit: "4mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/assets", express.static(path.join(ROOT, "public", "assets")));
+app.use("/vendor/flatpickr", express.static(path.join(ROOT, "node_modules", "flatpickr", "dist")));
 app.use("/generated", express.static(HTML_DIR, {
   setHeaders(res) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -157,8 +160,7 @@ async function savePdfFile(type, itinerary, design = "modern") {
 }
 
 function proposalReference() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  return `MKQ-${date}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+  return `MKQ-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
 function passengerName(value) {
@@ -275,12 +277,15 @@ function cleanupOldOriginalUploads() {
 }
 
 function cleanupOldFilesIn(directory) {
-  const cutoffMs = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   if (!fs.existsSync(directory)) return 0;
   let removed = 0;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     const filePath = path.join(directory, entry.name);
+    const retentionDays = /_Flight_Proposal\.(?:html|pdf)$/i.test(entry.name)
+      ? PROPOSAL_RETENTION_DAYS
+      : RETENTION_DAYS;
+    const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
     if (fs.statSync(filePath).mtimeMs < cutoffMs) {
       deleteGeneratedFile(filePath);
       removed += 1;
@@ -364,6 +369,22 @@ app.get("/api/flight-search/airports", asyncRoute(async (req, res) => {
   res.json({ airports: await searchAirports(req.query.q) });
 }));
 
+app.get("/api/airline-logo/:code", asyncRoute(async (req, res) => {
+  const code = normalizedCode(req.params.code);
+  if (!code) {
+    res.status(400).end();
+    return;
+  }
+  const logo = await airlineLogo(code);
+  if (!logo) {
+    res.status(404).end();
+    return;
+  }
+  res.setHeader("Content-Type", logo.mimeType);
+  res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+  res.send(logo.buffer);
+}));
+
 app.post("/api/flight-search", asyncRoute(async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json(await searchFlights(req.body));
@@ -401,10 +422,11 @@ app.post("/api/flight-proposals/generate", asyncRoute(async (req, res) => {
     passengerName: passengerName(req.body?.passengerName),
     tripType: selection.entry.tripType,
     cabinClass: selection.itinerary.cabinClass,
+    passengers: selection.entry.passengers,
     outbound: selection.itinerary.outbound,
     inbound: selection.itinerary.inbound
   };
-  const generated = await saveFlightProposalFiles(proposal, req.body?.design || "modern");
+  const generated = await saveFlightProposalFiles(await withAirlineLogos(proposal), req.body?.design || "modern");
   res.json({ generated });
 }));
 
@@ -437,15 +459,15 @@ app.put("/api/flight-itineraries/:id", (req, res) => {
   res.json({ record });
 });
 
-app.post("/api/flight-itineraries/:id/generate", (req, res) => {
+app.post("/api/flight-itineraries/:id/generate", asyncRoute(async (req, res) => {
   const record = getFlightItinerary(Number(req.params.id));
   if (!record) {
     res.status(404).json({ error: "Flight itinerary not found." });
     return;
   }
-  const generated = saveHtmlFile("flight", record, req.body?.design || "modern");
+  const generated = saveHtmlFile("flight", await withAirlineLogos(record), req.body?.design || "modern");
   res.json({ generated });
-});
+}));
 
 app.post("/api/flight-itineraries/:id/generate-pdf", asyncRoute(async (req, res) => {
   const record = getFlightItinerary(Number(req.params.id));
@@ -453,7 +475,7 @@ app.post("/api/flight-itineraries/:id/generate-pdf", asyncRoute(async (req, res)
     res.status(404).json({ error: "Flight itinerary not found." });
     return;
   }
-  const generated = await savePdfFile("flight", record, req.body?.design || "modern");
+  const generated = await savePdfFile("flight", await withAirlineLogos(record), req.body?.design || "modern");
   res.json({ generated });
 }));
 

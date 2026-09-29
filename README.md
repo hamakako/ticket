@@ -11,6 +11,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 IGNAV_API_KEY=your_ignav_api_key_here
 DATABASE_URL=file:./mk_itinerary.db
 RETENTION_DAYS=7
+PROPOSAL_RETENTION_DAYS=15
 ```
 
 ## Run Locally
@@ -24,7 +25,7 @@ Open `http://localhost:3000`.
 
 For both flights and hotels, office staff can upload a document or paste copied booking text from an email. Gemini extracts either source into the same editable review form before saving or generating an itinerary.
 
-The Live Flight Search page uses Ignav for one-way and round-trip schedules. Staff can select a live result, enter a passenger name manually or extract the name only from an uploaded passport, open real provider booking links, and generate branded A4 HTML/PDF flight proposals. Proposals use an internal `MKQ-...` reference and are clearly marked as unconfirmed; the app never invents airline PNRs or ticket numbers.
+The Live Flight Search page uses Ignav for one-way and round-trip schedules, including city-wide airport choices and adult, child, and lap-infant passenger mixes. Staff can select a live result, enter a passenger name manually or extract the name only from an uploaded passport, open real provider booking links, and generate a one-page English A4 HTML/PDF visa travel plan with airline logos. Travel plans use an internal `MKQ-...` document reference, are clearly marked as unconfirmed, and are automatically deleted after 15 days. The app never invents airline PNRs or ticket numbers.
 
 ## Free Online Deployment
 

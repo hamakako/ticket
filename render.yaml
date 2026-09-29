@@ -12,6 +12,8 @@ services:
         value: file:./mk_itinerary.db
       - key: RETENTION_DAYS
         value: 7
+      - key: PROPOSAL_RETENTION_DAYS
+        value: 15
       - key: GEMINI_API_KEY
         sync: false
       - key: IGNAV_API_KEY

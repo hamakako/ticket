@@ -56,6 +56,17 @@ function display(value) {
   return escapeHtml(text || "Not specified");
 }
 
+function airlineIdentity(segment = {}, fallbackName = "") {
+  const airline = meaningful(segment.airline) || meaningful(fallbackName) || "Airline";
+  const logo = meaningful(segment.airlineLogo);
+  return `
+    <div class="airline-identity">
+      ${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(airline)} logo">` : `<span class="airline-logo-fallback">${escapeHtml((segment.carrierCode || airline).slice(0, 2).toUpperCase())}</span>`}
+      <span><strong>${escapeHtml(airline)}</strong></span>
+    </div>
+  `;
+}
+
 function normalizeDesign(design) {
   return designs.has(design) ? design : "modern";
 }
@@ -317,6 +328,31 @@ function sharedStyles() {
     .muted {
       color: var(--muted);
     }
+    .airline-identity {
+      display: flex;
+      align-items: center;
+      gap: 2.5mm;
+    }
+    .airline-identity img,
+    .airline-logo-fallback {
+      width: 9mm;
+      height: 9mm;
+      flex: 0 0 9mm;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+      object-fit: contain;
+      padding: 1mm;
+    }
+    .airline-logo-fallback {
+      display: grid;
+      place-items: center;
+      background: #f2f8f9;
+      color: var(--navy);
+      font-size: 9px;
+      font-weight: 900;
+      padding: 0;
+    }
     ul,
     ol {
       margin: 0;
@@ -513,7 +549,7 @@ function flightSegmentRows(segments) {
   return segments.map((segment) => `
     <tr>
       <td>
-        <strong>${display(segment.airline)}</strong><br>
+        ${airlineIdentity(segment)}
         <span class="muted">${display(segment.flightNumber)} · ${display(segment.class)}</span>
       </td>
       <td>
@@ -576,7 +612,7 @@ function proposalLeg(title, leg) {
         <tbody>
           ${leg.segments.map((segment) => `
             <tr>
-              <td><strong>${display(segment.airline || leg.carrier)}</strong><br><span class="muted">${display(`${segment.carrierCode || ""}${segment.flightNumber || ""}`)}</span></td>
+              <td>${airlineIdentity(segment, leg.carrier)}<span class="muted">${display(`${segment.carrierCode || ""}${segment.flightNumber || ""}`)}</span></td>
               <td><span class="route">${display(segment.departureAirport)} → ${display(segment.arrivalAirport)}</span></td>
               <td>${localDateTime(segment.departureTime)}</td>
               <td>${localDateTime(segment.arrivalTime)}</td>
@@ -589,66 +625,97 @@ function proposalLeg(title, leg) {
   `;
 }
 
+function passengerMixLabel(passengers = {}) {
+  const parts = [
+    [Number(passengers.adults) || 1, "Adult", "Adults"],
+    [Number(passengers.children) || 0, "Child", "Children"],
+    [Number(passengers.infants) || 0, "Infant", "Infants"]
+  ];
+  return parts
+    .filter(([count]) => count > 0)
+    .map(([count, singular, plural]) => `${count} ${count === 1 ? singular : plural}`)
+    .join(" · ");
+}
+
 function generateFlightProposalHtml(data, design = "modern") {
   const designName = normalizeDesign(design);
   const tripType = data.tripType === "round-trip" ? "Round trip" : "One way";
   const cabin = String(data.cabinClass || "economy").replace(/_/g, " ");
+  const passengerMix = passengerMixLabel(data.passengers);
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flight Proposal - ${display(data.reference)}</title>
+  <title>Visa Flight Itinerary - ${display(data.reference)}</title>
   <style>
     ${sharedStyles()}
-    .proposal-alert {
-      margin: 0 0 6mm;
-      padding: 3.5mm 4mm;
-      border: 2px solid var(--navy);
-      border-left: 7px solid var(--teal);
+    .status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5mm;
+      margin: 0 0 5mm;
+      padding: 3mm 4mm;
+      border: 1px solid #d8c898;
+      border-left: 5px solid #c69422;
       border-radius: 6px;
-      background: #f4fbfb;
-      color: var(--navy);
+      background: #fffaf0;
     }
-    .proposal-alert strong { display: block; font-size: 14px; text-transform: uppercase; }
-    .proposal-alert p { margin: 1.5mm 0 0; color: var(--ink); font-size: 11px; }
-    .proposal-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 6mm; }
+    .status-strip strong { color: #6d4a00; font-size: 11px; text-transform: uppercase; }
+    .status-strip span { color: #675f50; font-size: 9.5px; text-align: right; }
+    .document-hero { grid-template-columns: minmax(0, 92mm) minmax(0, 1fr); }
+    .status-card { border-left-color: #c69422; }
+    .status-card strong { color: #6d4a00; }
+    .passenger-table { margin-top: 5mm; }
+    .proposal-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 5mm 0 0; }
     .proposal-leg-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 6mm; margin-bottom: 3mm; }
     .proposal-leg-heading h3 { margin: 0; }
     .proposal-leg-heading span { color: var(--muted); font-size: 11px; }
     .proposal-leg table { font-size: 10px; }
     .proposal-leg th, .proposal-leg td { padding: 2.5mm 2mm; }
-    .proposal-note { margin-top: 6mm; padding: 4mm; border-radius: 6px; background: var(--cream); }
-    .proposal-note h3 { margin: 0 0 2mm; color: var(--navy); }
-    .proposal-note p { margin: 1mm 0; }
-    .proposal-note .rtl-note { direction: rtl; font-family: "UniSIRWAN Noor", Arial, sans-serif; font-size: 12px; }
+    .proposal-note { margin-top: 5mm; padding: 3mm 4mm; border-radius: 6px; background: var(--cream); }
+    .proposal-note strong { color: var(--navy); }
+    .proposal-note p { margin: 0; font-size: 10px; }
   </style>
 </head>
 <body class="design-${designName}">
   <section class="page">
     <div class="content">
-      ${brandHeader("Flight Proposal", "Reservation request")}
+      ${brandHeader("Flight Itinerary", "English · Visa travel plan")}
 
-      <div class="proposal-alert">
-        <strong>Not a confirmed booking or airline ticket</strong>
-        <p>No airline PNR or ticket number has been issued. Flight schedules and availability can change until booking is completed with the airline or provider.</p>
+      <div class="status-strip">
+        <strong>Unconfirmed visa travel plan</strong>
+        <span>Booking status: not booked · Airline PNR and e-ticket number: not issued</span>
       </div>
 
-      <div class="hero">
+      <div class="hero document-hero">
         <div class="summary-card">
-          <h3>MK Proposal Reference</h3>
+          <h3>MK Document Reference (not airline PNR)</h3>
           <div class="reference">${display(data.reference)}</div>
         </div>
+        <div class="summary-card status-card">
+          <h3>Document Status</h3>
+          <div class="reference">UNCONFIRMED</div>
+        </div>
       </div>
 
-      <div class="section grid-2 proposal-meta">
-        <div class="soft-card">
-          <div class="label">Passenger</div>
-          <strong>${display(data.passengerName)}</strong>
-        </div>
+      <div class="section passenger-table">
+        <h3>Passenger</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Passenger Mix</th></tr></thead>
+          <tbody><tr><td><strong>${display(data.passengerName)}</strong></td><td>${escapeHtml(passengerMix)}</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="grid-2 proposal-meta">
         <div class="soft-card">
           <div class="label">Journey</div>
           <strong>${escapeHtml(tripType)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Passengers</div>
+          <strong>${escapeHtml(passengerMix)}</strong>
         </div>
         <div class="soft-card">
           <div class="label">Cabin</div>
@@ -660,9 +727,7 @@ function generateFlightProposalHtml(data, design = "modern") {
       ${proposalLeg("Return flight", data.inbound)}
 
       <div class="proposal-note">
-        <h3>Important</h3>
-        <p>This proposal is prepared from live search information and is for review only. Complete the booking with the provider before relying on the itinerary.</p>
-        <p class="rtl-note">ئەم بەڵگەنامەیە تەنها پێشنیاری گەشتە و بلیت یان دڵنیابوونەوەی حجز نییە. پێویستە حجزەکە لەلایەن فڕۆکەوانی یان دابینکەرەوە تەواو بکرێت.</p>
+        <p><strong>Important:</strong> This English itinerary is prepared from live flight-search information for visa planning. Confirm and purchase the selected flights through the airline or booking provider before travel.</p>
       </div>
     </div>
   </section>
