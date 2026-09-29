@@ -37,8 +37,12 @@ function carrierCodeFor(segment = {}) {
   const direct = normalizedCode(segment.carrierCode);
   if (direct) return direct;
 
-  const flightMatch = String(segment.flightNumber || "").toUpperCase().match(/^\s*([A-Z0-9]{2,3})\s*[- ]?\d/);
-  if (flightMatch) return normalizedCode(flightMatch[1]);
+  const flightNumber = String(segment.flightNumber || "").trim().toUpperCase();
+  const separatedMatch = flightNumber.match(/^([A-Z0-9]{2,3})\s*[- ]+\d/);
+  const compactIataMatch = flightNumber.match(/^([A-Z][A-Z0-9]|[0-9][A-Z])\d/);
+  const compactIcaoMatch = flightNumber.match(/^([A-Z]{3})\d/);
+  const flightCode = separatedMatch?.[1] || compactIataMatch?.[1] || compactIcaoMatch?.[1] || "";
+  if (/[A-Z]/.test(flightCode)) return normalizedCode(flightCode);
 
   return airlineCodes.get(String(segment.airline || "").trim().toLowerCase()) || "";
 }
