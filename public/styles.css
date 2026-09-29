@@ -964,6 +964,16 @@ label textarea {
   text-align: right;
 }
 
+.baggage-guidance {
+  margin: 7px 2px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.baggage-guidance strong {
+  color: var(--navy);
+}
+
 .selected-flight-empty {
   min-height: 76px;
   margin-bottom: 16px;

@@ -651,6 +651,7 @@ function generateFlightProposalHtml(data, design = "modern") {
   const cabin = String(data.cabinClass || "economy").replace(/_/g, " ");
   const passengerMix = passengerMixLabel(data.passengers);
   const baggage = proposalBaggageLabel(data.bags);
+  const agencyBaggageGuidance = "23 kg checked · 7 kg cabin";
   const hasManualIdentifiers = Boolean(data.airlinePnr || data.ticketNumber);
   const bookingStatus = hasManualIdentifiers
     ? "Airline identifiers entered manually by the agency. Verify them with the airline or booking provider."
@@ -688,6 +689,10 @@ function generateFlightProposalHtml(data, design = "modern") {
     .proposal-leg-heading span { color: var(--muted); font-size: 11px; }
     .proposal-leg table { font-size: 10px; }
     .proposal-leg th, .proposal-leg td { padding: 2.5mm 2mm; }
+    .proposal-baggage-guidance { display: flex; align-items: center; justify-content: space-between; gap: 5mm; margin-top: 3mm; padding: 2.5mm 3mm; border-left: 4px solid var(--teal); border-radius: 5px; background: #eef7f8; }
+    .proposal-baggage-guidance .label { display: block; color: var(--muted); font-size: 8px; font-weight: 800; text-transform: uppercase; }
+    .proposal-baggage-guidance strong { display: block; margin-top: 0.5mm; color: var(--navy); font-size: 11px; }
+    .proposal-baggage-guidance p { margin: 0; max-width: 66mm; color: var(--muted); font-size: 8.5px; text-align: right; }
     .proposal-note { margin-top: 5mm; padding: 3mm 4mm; border-radius: 6px; background: var(--cream); }
     .proposal-note strong { color: var(--navy); }
     .proposal-note p { margin: 0; font-size: 10px; }
@@ -743,6 +748,14 @@ function generateFlightProposalHtml(data, design = "modern") {
           <div class="label">Included baggage</div>
           <strong>${escapeHtml(baggage)}</strong>
         </div>
+      </div>
+
+      <div class="proposal-baggage-guidance">
+        <div>
+          <span class="label">Agency baggage guidance</span>
+          <strong>${escapeHtml(agencyBaggageGuidance)}</strong>
+        </div>
+        <p>This is general agency guidance, not a confirmed airline allowance. Verify it with the airline before travel.</p>
       </div>
 
       ${proposalLeg("Outbound flight", data.outbound)}

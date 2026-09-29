@@ -21,6 +21,7 @@ const bookingLinksList = document.querySelector("[data-booking-links-list]");
 const generateButton = document.querySelector("[data-generate-proposal]");
 const proposalStatus = document.querySelector("[data-proposal-status]");
 const downloads = document.querySelector("[data-proposal-downloads]");
+const AGENCY_BAGGAGE_GUIDANCE = "23 kg checked · 7 kg cabin";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -145,6 +146,7 @@ function renderResults() {
         ${legHtml("Outbound", result.outbound)}
         ${legHtml("Return", result.inbound)}
         <div class="result-baggage"><span>Included baggage</span><strong>${escapeHtml(baggageLabel(result.bags))}</strong></div>
+        <p class="baggage-guidance"><strong>Agency baggage guidance:</strong> ${escapeHtml(AGENCY_BAGGAGE_GUIDANCE)}. Verify the allowance with the airline before travel.</p>
         ${result.requiresSelfTransfer ? '<p class="transfer-warning">This option may require a self-transfer.</p>' : ""}
       </article>
     `;
@@ -178,6 +180,7 @@ function selectResult(resultIndex) {
     <strong>${escapeHtml(first.departureAirport)} → ${escapeHtml(last.arrivalAirport)}</strong>
     <small>${airlineIdentityHtml(first, state.selected.outbound.carrier)} ${escapeHtml(formatDateTime(first.departureTime))}</small>
     <small>Included baggage: ${escapeHtml(baggageLabel(state.selected.bags))}</small>
+    <small>Agency guidance: ${escapeHtml(AGENCY_BAGGAGE_GUIDANCE)} · Verify with airline</small>
   `;
   bindLogoFallbacks();
 }
