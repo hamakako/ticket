@@ -30,6 +30,35 @@ function displayValue(value) {
   return escapeHtml(value && value !== "Not specified" ? value : "Not specified");
 }
 
+function validDate(year, month, day) {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date
+    : null;
+}
+
+function parseExtractedDate(value) {
+  const text = editableValue(value).trim();
+  if (!text) return null;
+
+  let match = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (match) return validDate(Number(match[3]), Number(match[2]), Number(match[1]));
+
+  match = text.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+  if (match) return validDate(Number(match[1]), Number(match[2]), Number(match[3]));
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : validDate(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
+}
+
+function formatCalendarDate(date) {
+  return [
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    date.getFullYear()
+  ].join("/");
+}
+
 async function api(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
@@ -90,11 +119,11 @@ function renderEditor() {
               <h4>${displayValue(segment.departureCity)} → ${displayValue(segment.arrivalCity)} · ${displayValue(segment.airline)} ${displayValue(segment.flightNumber)}</h4>
               <label>
                 Departure date
-                <input type="text" maxlength="30" value="${escapeHtml(editableValue(segment.departureDate))}" data-edit-departure-date="${index}">
+                <input type="text" maxlength="30" autocomplete="off" placeholder="Select a date" value="${escapeHtml(editableValue(segment.departureDate))}" data-ticket-date data-date-kind="departure" data-segment-index="${index}" data-edit-departure-date="${index}">
               </label>
               <label>
                 Arrival date
-                <input type="text" maxlength="30" value="${escapeHtml(editableValue(segment.arrivalDate))}" data-edit-arrival-date="${index}">
+                <input type="text" maxlength="30" autocomplete="off" placeholder="Select a date" value="${escapeHtml(editableValue(segment.arrivalDate))}" data-ticket-date data-date-kind="arrival" data-segment-index="${index}" data-edit-arrival-date="${index}">
               </label>
             </div>
           `).join("")}
@@ -145,7 +174,49 @@ function renderEditor() {
     });
   });
 
+  initializeDatePickers();
+
   generateButton.disabled = false;
+}
+
+function initializeDatePickers() {
+  editor.querySelectorAll("[data-ticket-date]").forEach((input) => {
+    const segmentIndex = Number(input.dataset.segmentIndex);
+    const field = input.dataset.dateKind === "departure" ? "departureDate" : "arrivalDate";
+    const originalValue = editableValue(state.data.segments[segmentIndex][field]);
+    const parsedDate = parseExtractedDate(originalValue);
+
+    if (window.flatpickr) {
+      window.flatpickr(input, {
+        allowInput: true,
+        animate: true,
+        dateFormat: "d/m/Y",
+        defaultDate: parsedDate || undefined,
+        disableMobile: true,
+        onChange: (_dates, dateText) => {
+          state.data.segments[segmentIndex][field] = dateText;
+        },
+        onClose: (_dates, dateText) => {
+          state.data.segments[segmentIndex][field] = dateText || input.value;
+        }
+      });
+      if (parsedDate) state.data.segments[segmentIndex][field] = formatCalendarDate(parsedDate);
+      else if (originalValue) input.value = originalValue;
+      return;
+    }
+
+    input.type = "date";
+    if (parsedDate) {
+      input.value = [
+        parsedDate.getFullYear(),
+        String(parsedDate.getMonth() + 1).padStart(2, "0"),
+        String(parsedDate.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+    input.addEventListener("change", () => {
+      state.data.segments[segmentIndex][field] = input.value;
+    });
+  });
 }
 
 function resetPage() {
