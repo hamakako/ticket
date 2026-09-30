@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket Edit | MK Business and Travel</title>
+  <link rel="stylesheet" href="/styles.css?v=20260930-5">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block brand-with-nav">
+      <a class="brand-home" href="/">
+        <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+        <div>
+          <h1>MK Business and Travel</h1>
+          <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
+        </div>
+      </a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="/">Itineraries</a>
+        <a href="/flight-search.html">Live Flight Search</a>
+        <a class="active" href="/ticket-edit.html">Ticket Edit</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="ticket-edit-intro">
+      <p class="eyebrow">Ticket Edit</p>
+      <h2>Edit key ticket details</h2>
+      <p>Upload an existing ticket, review the Gemini extraction, and edit only the passenger name, travel dates, PNR, and ticket number before creating the standard MK branded flight itinerary.</p>
+    </section>
+
+    <section class="ticket-edit-grid">
+      <div class="ticket-edit-main">
+        <div class="step-card">
+          <div class="step-number-heading">
+            <span>1</span>
+            <div>
+              <p>Upload and extract</p>
+              <h3>Process the original ticket</h3>
+            </div>
+          </div>
+          <div class="upload-row">
+            <input type="file" data-ticket-file accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+            <button type="button" data-ticket-process>Process with Gemini</button>
+            <button class="secondary-button" type="button" data-ticket-reset>New ticket</button>
+          </div>
+          <p class="ticket-edit-note">PDF, JPG, JPEG, PNG, and WebP are supported. Maximum file size: 20 MB.</p>
+          <p class="status" data-ticket-status aria-live="polite"></p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number-heading">
+            <span>2</span>
+            <div>
+              <p>Review and edit</p>
+              <h3>Change the four permitted details</h3>
+            </div>
+          </div>
+          <div data-ticket-editor>
+            <p class="ticket-edit-empty">Upload and process a ticket to begin editing.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="step-card ticket-edit-actions">
+        <div class="step-number-heading">
+          <span>3</span>
+          <div>
+            <p>Generate</p>
+            <h3>Create branded itinerary</h3>
+          </div>
+        </div>
+        <p class="ticket-edit-note">The result uses the same A4 layout and branding as Flight Ticket and is saved in flight history for 7 days.</p>
+        <label class="design-picker">
+          Design
+          <select data-ticket-design>
+            <option value="modern">Modern</option>
+            <option value="executive">Executive</option>
+            <option value="minimal">Minimal</option>
+          </select>
+        </label>
+        <button type="button" data-ticket-generate disabled>Generate HTML &amp; PDF</button>
+        <p class="status" data-ticket-generate-status aria-live="polite"></p>
+        <div class="ticket-edit-downloads hidden" data-ticket-downloads>
+          <a class="download-link" data-ticket-open-html href="#" target="_blank" rel="noreferrer">Open HTML</a>
+          <a class="download-link" data-ticket-download-html href="#" download>Download HTML</a>
+          <a class="download-link" data-ticket-open-pdf href="#" target="_blank" rel="noreferrer">Open PDF</a>
+          <a class="download-link" data-ticket-download-pdf href="#" download>Download PDF</a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="/ticket-edit.js?v=20260930-1"></script>
+</body>
+</html>
