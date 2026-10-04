@@ -12,16 +12,53 @@ function limitedText(value, maxLength = 200) {
   return meaningful(value).slice(0, maxLength);
 }
 
-function isoDate(value) {
-  const date = parseDate(value);
+function hasExplicitYear(value) {
+  return /\b\d{4}\b/.test(String(value || ""));
+}
+
+function datePartsTimestamp(date) {
+  return Date.UTC(date.year, date.month - 1, date.day, 23, 59, 59);
+}
+
+function parseSmartTripDate(value, referenceTimestamp = Date.now()) {
+  const text = meaningful(value);
+  if (!text) return null;
+  if (hasExplicitYear(text)) return parseDate(text);
+
+  const reference = new Date(Number.isFinite(referenceTimestamp) ? referenceTimestamp : Date.now());
+  const referenceDay = Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate());
+  let year = reference.getUTCFullYear();
+  let date = null;
+
+  const numeric = text.match(/^(\d{1,2})[./-](\d{1,2})$/);
+  if (numeric) {
+    date = { year, month: Number(numeric[2]), day: Number(numeric[1]) };
+  } else {
+    const withoutWeekday = text.replace(/^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*,?\s+/i, "");
+    const parsed = new Date(`${withoutWeekday} ${year} 00:00:00 UTC`);
+    if (!Number.isNaN(parsed.getTime())) {
+      date = { year, month: parsed.getUTCMonth() + 1, day: parsed.getUTCDate() };
+    }
+  }
+
+  if (!date || !parseDate(`${date.year}-${date.month}-${date.day}`)) return null;
+  if (Date.UTC(date.year, date.month - 1, date.day) < referenceDay) {
+    year += 1;
+    date = { ...date, year };
+  }
+  return parseDate(`${date.year}-${date.month}-${date.day}`);
+}
+
+function isoDate(value, referenceTimestamp = Date.now()) {
+  const date = parseSmartTripDate(value, referenceTimestamp);
   if (!date) return "";
   return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`;
 }
 
-function dateTimestamp(value) {
-  const date = parseDate(value);
+function dateTimestamp(value, referenceTimestamp = Date.now()) {
+  const date = parseSmartTripDate(value, referenceTimestamp);
   if (!date) return null;
-  return Date.UTC(date.year, date.month - 1, date.day, 23, 59, 59);
+  return datePartsTimestamp(date);
 }
 
 function addDays(timestamp, days) {
@@ -56,19 +93,23 @@ function deriveSmartTripPrefill(itinerary = {}) {
   };
 }
 
-function normalizeHotels(value, destinationCity) {
+function normalizeHotels(value, destinationCity, referenceTimestamp = Date.now()) {
   const hotels = Array.isArray(value) ? value : [];
   return hotels
     .slice(0, 10)
-    .map((hotel) => ({
-      hotelName: limitedText(hotel?.hotelName, 160),
-      hotelCity: limitedText(hotel?.hotelCity, 120) || destinationCity,
-      hotelAddress: limitedText(hotel?.hotelAddress, 300),
-      checkInDate: isoDate(hotel?.checkInDate),
-      checkOutDate: isoDate(hotel?.checkOutDate),
-      hotelPhone: limitedText(hotel?.hotelPhone, 80),
-      notes: limitedText(hotel?.notes, 500)
-    }))
+    .map((hotel) => {
+      const checkInDate = isoDate(hotel?.checkInDate, referenceTimestamp);
+      const checkInTimestamp = dateTimestamp(checkInDate, referenceTimestamp) ?? referenceTimestamp;
+      return {
+        hotelName: limitedText(hotel?.hotelName, 160),
+        hotelCity: limitedText(hotel?.hotelCity, 120) || destinationCity,
+        hotelAddress: limitedText(hotel?.hotelAddress, 300),
+        checkInDate,
+        checkOutDate: isoDate(hotel?.checkOutDate, checkInTimestamp),
+        hotelPhone: limitedText(hotel?.hotelPhone, 80),
+        notes: limitedText(hotel?.notes, 500)
+      };
+    })
     .filter((hotel) => hotel.hotelName)
     .sort((left, right) => {
       const leftTime = dateTimestamp(left.checkInDate) ?? Number.MAX_SAFE_INTEGER;
@@ -77,7 +118,7 @@ function normalizeHotels(value, destinationCity) {
     });
 }
 
-function normalizeSmartTripInput(value = {}, prefill = {}) {
+function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
   const destinationCity = limitedText(value.destinationCity || prefill.destinationCity, 120);
   if (destinationCity.length < 2) throw new Error("Please confirm the destination city.");
 
@@ -86,27 +127,36 @@ function normalizeSmartTripInput(value = {}, prefill = {}) {
     throw new Error("WhatsApp number contains unsupported characters.");
   }
 
+  const departureDate = isoDate(prefill.departureDate, now);
+  const departureTimestamp = dateTimestamp(departureDate, now) ?? now;
+  const returnDate = isoDate(prefill.returnDate, departureTimestamp);
+
   return {
     destinationCity,
     destinationCountry: limitedText(value.destinationCountry || prefill.destinationCountry, 120),
     customerWhatsapp: whatsapp,
     notes: limitedText(value.notes, 1000),
     sightseeingRequested: value.sightseeingRequested !== false,
-    hotels: normalizeHotels(value.hotels, destinationCity)
+    departureDate: departureDate || limitedText(prefill.departureDate, 40),
+    returnDate: returnDate || limitedText(prefill.returnDate, 40),
+    hotels: normalizeHotels(value.hotels, destinationCity, departureTimestamp)
   };
 }
 
-function calculateSmartTripExpiry(returnDate, hotels, departureDate) {
-  const returnTime = dateTimestamp(returnDate);
-  if (returnTime !== null) return addDays(returnTime, 14);
+function calculateSmartTripExpiry(returnDate, hotels, departureDate, now = Date.now()) {
+  const departureTime = dateTimestamp(departureDate, now) ?? now;
+  const returnTime = dateTimestamp(returnDate, departureTime);
+  let expiry = returnTime !== null ? addDays(returnTime, 14) : "";
 
-  const checkoutTimes = (hotels || [])
-    .map((hotel) => dateTimestamp(hotel.checkOutDate))
-    .filter((timestamp) => timestamp !== null);
-  if (checkoutTimes.length) return addDays(Math.max(...checkoutTimes), 14);
+  if (!expiry) {
+    const checkoutTimes = (hotels || [])
+      .map((hotel) => dateTimestamp(hotel.checkOutDate, departureTime))
+      .filter((timestamp) => timestamp !== null);
+    if (checkoutTimes.length) expiry = addDays(Math.max(...checkoutTimes), 14);
+  }
 
-  const departureTime = dateTimestamp(departureDate) ?? Date.now();
-  return addDays(departureTime, 30);
+  if (!expiry) expiry = addDays(departureTime, 30);
+  return Date.parse(expiry) > now ? expiry : addDays(now, 30);
 }
 
 function flightSnapshot(itinerary = {}) {

@@ -44,6 +44,32 @@ test("uses departure plus 30 days when no return or hotel checkout exists", () =
   assert.equal(calculateSmartTripExpiry("", [], "01/10/2026"), "2026-10-31T23:59:59.000Z");
 });
 
+test("assigns the current travel year when ticket dates omit the year", () => {
+  const now = Date.UTC(2026, 9, 4, 12);
+  assert.equal(
+    calculateSmartTripExpiry("Sun, Oct 18", [], "Sun, Oct 11", now),
+    "2026-11-01T23:59:59.000Z"
+  );
+});
+
+test("moves a yearless January return into the year after a December departure", () => {
+  const now = Date.UTC(2026, 11, 1, 12);
+  const input = normalizeSmartTripInput({ destinationCity: "Istanbul" }, {
+    departureDate: "Dec 20",
+    returnDate: "Jan 5"
+  }, now);
+  assert.equal(input.departureDate, "2026-12-20");
+  assert.equal(input.returnDate, "2027-01-05");
+});
+
+test("never creates a Smart Trip link that is already expired", () => {
+  const now = Date.UTC(2026, 9, 4, 12);
+  assert.equal(
+    calculateSmartTripExpiry("01/01/2020", [], "01/01/2020", now),
+    "2026-11-03T12:00:00.000Z"
+  );
+});
+
 test("normalizes and sorts multiple optional hotels", () => {
   const input = normalizeSmartTripInput({
     destinationCity: "Istanbul",

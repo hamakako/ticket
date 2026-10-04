@@ -581,6 +581,27 @@ textarea {
   color: var(--navy);
 }
 
+.smart-trip-hotel-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px dashed var(--teal);
+  border-radius: 6px;
+  background: #f4fafb;
+}
+
+.smart-trip-hotel-upload small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.smart-trip-hotel-upload small.error {
+  color: #b3261e;
+}
+
 .smart-trip-hotel-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -616,11 +637,13 @@ textarea {
   }
 
   .smart-trip-flight-summary,
-  .smart-trip-hotel-grid {
+  .smart-trip-hotel-grid,
+  .smart-trip-hotel-upload {
     grid-template-columns: 1fr;
   }
 
-  .smart-trip-hotel-grid .full-span {
+  .smart-trip-hotel-grid .full-span,
+  .smart-trip-hotel-upload small {
     grid-column: auto;
   }
 

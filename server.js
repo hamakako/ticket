@@ -29,6 +29,7 @@ const {
   detectSmartTripDestination,
   extractDocument,
   extractPassportName,
+  extractSmartTripHotel,
   extractText,
   generateSmartTripGuide
 } = require("./src/gemini");
@@ -389,6 +390,24 @@ app.post("/api/process/:type", upload.single("document"), asyncRoute(async (req,
   });
 }));
 
+app.post("/api/smart-trip/hotel-extract", upload.single("hotel"), asyncRoute(async (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "Please upload a hotel PDF or image first." });
+    return;
+  }
+
+  try {
+    const hotel = await extractSmartTripHotel({
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+      originalname: req.file.originalname
+    });
+    res.json({ hotel });
+  } finally {
+    deleteSourceFile(req.file.path);
+  }
+}));
+
 app.post("/api/process-text/:type", asyncRoute(async (req, res) => {
   const type = req.params.type;
   if (type !== "flight" && type !== "hotel") {
@@ -598,9 +617,9 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     destinationCountry: input.destinationCountry,
     customerWhatsapp: input.customerWhatsapp,
     notes: input.notes,
-    departureDate: prefill.departureDate,
+    departureDate: input.departureDate,
     departureTime: prefill.departureTime,
-    returnDate: prefill.returnDate,
+    returnDate: input.returnDate,
     flight: flightSnapshot(record),
     hotels: input.hotels,
     sightseeingRequested: input.sightseeingRequested,
@@ -608,7 +627,7 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     sightseeing: guide.sightseeing,
     travelTip: guide.travelTip,
     miniPlan: guide.miniPlan,
-    expiresAt: calculateSmartTripExpiry(prefill.returnDate, input.hotels, prefill.departureDate)
+    expiresAt: calculateSmartTripExpiry(input.returnDate, input.hotels, input.departureDate)
   });
   res.status(201).json({
     smartTrip: {

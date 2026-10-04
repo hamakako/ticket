@@ -571,6 +571,11 @@ function renderSmartTripHotels() {
   root.innerHTML = smartTripState.hotels.map((hotel, index) => `
     <div class="smart-trip-hotel" data-smart-hotel="${index}">
       <div class="smart-trip-hotel-heading"><strong>Hotel ${index + 1}</strong><button class="danger-button" type="button" data-remove-smart-hotel="${index}">Remove</button></div>
+      <div class="smart-trip-hotel-upload">
+        <label>Hotel voucher PDF or image<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" data-smart-hotel-file></label>
+        <button class="secondary-button" type="button" data-extract-smart-hotel="${index}">Extract Hotel with AI</button>
+        <small data-smart-hotel-extract-status></small>
+      </div>
       <div class="smart-trip-hotel-grid">
         <label>Hotel name<input type="text" maxlength="160" data-smart-hotel-field="hotelName" value="${escapeAttribute(hotel.hotelName)}" required></label>
         <label>Hotel city<input type="text" maxlength="120" data-smart-hotel-field="hotelCity" value="${escapeAttribute(hotel.hotelCity)}"></label>
@@ -589,8 +594,43 @@ function renderSmartTripHotels() {
       renderSmartTripHotels();
     });
   });
+  root.querySelectorAll("[data-extract-smart-hotel]").forEach((button) => {
+    button.addEventListener("click", () => extractSmartTripHotel(Number(button.dataset.extractSmartHotel), button));
+  });
   const addButton = document.querySelector("[data-add-smart-hotel]");
   addButton.textContent = smartTripState.hotels.length ? "+ Add another hotel" : "+ Add hotel";
+}
+
+async function extractSmartTripHotel(index, button) {
+  syncSmartTripHotels();
+  const card = button.closest("[data-smart-hotel]");
+  const file = card.querySelector("[data-smart-hotel-file]").files[0];
+  const status = card.querySelector("[data-smart-hotel-extract-status]");
+  if (!file) {
+    status.textContent = "Please choose a hotel PDF or image first.";
+    status.className = "error";
+    return;
+  }
+
+  const form = new FormData();
+  form.append("hotel", file);
+  button.disabled = true;
+  status.textContent = "Extracting hotel details with Gemini...";
+  status.className = "";
+  try {
+    const payload = await api("/api/smart-trip/hotel-extract", { method: "POST", body: form });
+    const current = smartTripState.hotels[index];
+    Object.entries(payload.hotel || {}).forEach(([key, value]) => {
+      if (value) current[key] = value;
+    });
+    if (!current.hotelCity) current.hotelCity = smartTripState.prefill?.destinationCity || "";
+    renderSmartTripHotels();
+    setSmartTripStatus(`Hotel ${index + 1} details extracted. Please review them before creating the link.`, "ok");
+  } catch (error) {
+    status.textContent = error.message;
+    status.className = "error";
+    button.disabled = false;
+  }
 }
 
 function syncSmartTripHotels() {
