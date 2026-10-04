@@ -65,6 +65,20 @@ function addDays(timestamp, days) {
   return new Date(timestamp + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+function calculateTripDayCount(arrivalDate, returnDate, hotels = [], referenceTimestamp = Date.now()) {
+  const arrivalTime = dateTimestamp(arrivalDate, referenceTimestamp)
+    ?? dateTimestamp(hotels?.[0]?.checkInDate, referenceTimestamp)
+    ?? dateTimestamp(returnDate, referenceTimestamp)
+    ?? referenceTimestamp;
+  const checkoutTimes = (hotels || [])
+    .map((hotel) => dateTimestamp(hotel.checkOutDate, arrivalTime))
+    .filter((timestamp) => timestamp !== null);
+  const returnTime = dateTimestamp(returnDate, arrivalTime);
+  const endTime = returnTime ?? (checkoutTimes.length ? Math.max(...checkoutTimes) : arrivalTime);
+  const inclusiveDays = Math.floor((endTime - arrivalTime) / (24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, Math.min(30, inclusiveDays));
+}
+
 function deriveSmartTripPrefill(itinerary = {}) {
   const segments = Array.isArray(itinerary.segments) ? itinerary.segments : [];
   const returnStart = findReturnStartIndex(segments);
@@ -129,7 +143,9 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
 
   const departureDate = isoDate(prefill.departureDate, now);
   const departureTimestamp = dateTimestamp(departureDate, now) ?? now;
+  const arrivalDate = isoDate(prefill.arrivalDate, departureTimestamp) || departureDate;
   const returnDate = isoDate(prefill.returnDate, departureTimestamp);
+  const hotels = normalizeHotels(value.hotels, destinationCity, departureTimestamp);
 
   return {
     destinationCity,
@@ -138,8 +154,10 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
     notes: limitedText(value.notes, 1000),
     sightseeingRequested: value.sightseeingRequested !== false,
     departureDate: departureDate || limitedText(prefill.departureDate, 40),
+    arrivalDate: arrivalDate || limitedText(prefill.arrivalDate, 40),
     returnDate: returnDate || limitedText(prefill.returnDate, 40),
-    hotels: normalizeHotels(value.hotels, destinationCity, departureTimestamp)
+    hotels,
+    tripDayCount: calculateTripDayCount(arrivalDate || departureDate, returnDate, hotels, departureTimestamp)
   };
 }
 
@@ -197,6 +215,7 @@ function hotelMapLinks(hotel, fallbackCity = "") {
 }
 
 module.exports = {
+  calculateTripDayCount,
   calculateSmartTripExpiry,
   deriveSmartTripPrefill,
   flightSnapshot,

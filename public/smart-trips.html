@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Trip Links | MK Business and Travel</title>
-  <link rel="stylesheet" href="/styles.css?v=20261004-smart-trip-manager">
+  <link rel="stylesheet" href="/styles.css?v=20261004-smart-trip-update">
 </head>
 <body>
   <header class="app-header">
@@ -24,12 +24,29 @@
 
   <main class="shell smart-trip-manager">
     <section class="manager-heading">
-      <div><p class="eyebrow">Smart Trip</p><h2>Customer links</h2><p>Open, copy, or permanently delete an active Smart Trip link.</p></div>
+      <div><p class="eyebrow">Smart Trip</p><h2>Customer links</h2><p>Open, download, copy, update, or permanently delete an active Smart Trip link.</p></div>
       <button class="secondary-button" type="button" data-refresh-smart-trips>Refresh</button>
     </section>
     <p class="status" data-smart-trip-manager-status aria-live="polite"></p>
     <section class="smart-trip-link-list" data-smart-trip-link-list></section>
   </main>
-  <script src="/smart-trips.js?v=20261004-1"></script>
+
+  <dialog class="ticket-update-dialog" data-ticket-update-dialog>
+    <form class="ticket-update-form" data-ticket-update-form>
+      <div class="ticket-update-heading">
+        <div><p class="eyebrow">Update Smart Trip</p><h2>Replace flight ticket</h2></div>
+        <button class="icon-button" type="button" aria-label="Close" data-ticket-update-close>×</button>
+      </div>
+      <p class="ticket-update-copy">Upload the changed ticket. Gemini will extract the new itinerary and rebuild the destination guide and daily plan. The customer link stays the same.</p>
+      <div class="ticket-update-trip" data-ticket-update-trip></div>
+      <label>Replacement ticket PDF or image<input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" required></label>
+      <p class="status" data-ticket-update-status aria-live="polite"></p>
+      <div class="ticket-update-actions">
+        <button class="secondary-button" type="button" data-ticket-update-cancel>Cancel</button>
+        <button type="submit" data-ticket-update-submit>Upload Ticket & Rebuild Plan</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/smart-trips.js?v=20261004-update"></script>
 </body>
 </html>

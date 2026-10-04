@@ -1,5 +1,5 @@
 const { parseDate, parseTime } = require("./flight-timings");
-const { hotelMapLinks } = require("./smart-trip");
+const { calculateTripDayCount, hotelMapLinks } = require("./smart-trip");
 
 const COMPANY_WHATSAPP = "9647500229292";
 
@@ -19,6 +19,11 @@ function display(value, fallback = "Not specified") {
 
 function whatsappUrl(message) {
   return `https://wa.me/${COMPANY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+}
+
+function publicUrl(filePath, baseUrl = "") {
+  if (!baseUrl) return filePath;
+  return `${String(baseUrl).replace(/\/$/, "")}${filePath}`;
 }
 
 function passengerFirstName(trip) {
@@ -96,7 +101,7 @@ function sightseeingCards(trip) {
         <div class="sight-grid">
           ${trip.sightseeing.map((place, index) => `
             <article class="sight-card">
-              ${place.imageUrl ? `<a class="sight-photo" href="${escapeHtml(place.imageSourceUrl || place.mapUrl)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(place.imageUrl)}" alt="${display(place.imageAlt || place.name)}" loading="lazy" referrerpolicy="no-referrer"></a>` : ""}
+              ${place.imageUrl ? `<a class="sight-photo" href="${escapeHtml(place.imageSourceUrl || place.mapUrl)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(place.imageUrl)}" alt="${display(place.imageAlt || place.name)}" loading="eager" referrerpolicy="no-referrer"></a>` : ""}
               <span class="sight-number">${index + 1}</span>
               <h3>${display(place.name)}</h3>
               <p>${display(place.description, "")}</p>
@@ -107,9 +112,10 @@ function sightseeingCards(trip) {
         </div>
         ${trip.travelTip ? `<div class="tip"><strong>تێبینی گەشت:</strong> ${display(trip.travelTip)}</div>` : ""}
         ${trip.miniPlan.length ? `
+          <div class="plan-heading"><span>DAILY PLAN</span><h2>پلانی ڕۆژ بە ڕۆژ</h2></div>
           <div class="mini-plan">
             ${trip.miniPlan.map((day) => `
-              <article><h3>${display(day.title)}</h3><ul>${(day.items || []).map((item) => `<li>${display(item)}</li>`).join("")}</ul></article>
+              <article><span class="day-index">${String(trip.miniPlan.indexOf(day) + 1).padStart(2, "0")}</span><h3>${display(day.title)}</h3><ul>${(day.items || []).map((item) => `<li>${display(item)}</li>`).join("")}</ul></article>
             `).join("")}
           </div>
         ` : ""}
@@ -125,13 +131,14 @@ function sightseeingCards(trip) {
   return "";
 }
 
-function smartTripStyles() {
+function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
   return `
-    @font-face { font-family:UniSIRWAN; src:url('/assets/UniSIRWAN%20Noor%20Regular.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:UniSIRWAN; src:url('${fontUrl}') format('truetype'); font-display:swap; }
+    @page { size:A4; margin:12mm; }
     :root { --navy:#170C79; --teal:#8ACBD0; --cream:#EFE3CA; --ink:#172033; --muted:#657084; --line:#d8e7e9; }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
-    body { margin:0; background:#f4f8f8; color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+    body { margin:0; border-top:5px solid var(--teal); background:#f4f8f8; color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
     a { color:inherit; }
     .header { background:#fff; border-bottom:1px solid var(--line); }
     .header-inner { width:min(1120px,calc(100% - 32px)); margin:auto; min-height:82px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
@@ -142,7 +149,13 @@ function smartTripStyles() {
     .brand span { margin-top:4px; color:var(--muted); font-size:12px; }
     .contact-top { color:var(--navy); font-weight:800; text-decoration:none; }
     .shell { width:min(1120px,calc(100% - 32px)); margin:auto; padding:28px 0 48px; }
-    .hero { padding:32px; border-top:6px solid var(--teal); border-radius:8px; background:#fff; box-shadow:0 14px 36px rgba(23,12,121,.08); display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; align-items:center; }
+    .document-tools { margin-bottom:14px; padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .document-tools > span { color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+    .tool-actions { display:flex; gap:8px; }
+    .tool-button { min-height:38px; padding:8px 13px; border:1px solid var(--teal); border-radius:6px; background:#eef7f8; color:var(--navy); cursor:pointer; font:inherit; font-size:12px; font-weight:800; text-decoration:none; }
+    .tool-button.primary { border-color:var(--navy); background:var(--navy); color:#fff; }
+    .hero { position:relative; overflow:hidden; padding:32px; border-top:6px solid var(--teal); border-radius:8px; background:#fff; box-shadow:0 14px 36px rgba(23,12,121,.08); display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; align-items:center; }
+    .hero::after { content:'MK'; position:absolute; right:20px; bottom:-34px; color:rgba(23,12,121,.035); font-size:150px; font-weight:900; line-height:1; pointer-events:none; }
     .eyebrow,.section-heading span { color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; }
     h1 { margin:6px 0 8px; color:var(--navy); font-size:clamp(30px,6vw,54px); line-height:1; }
     .hero p { margin:0; color:var(--muted); }
@@ -191,8 +204,12 @@ function smartTripStyles() {
     .sight-card a { color:var(--navy); font-size:12px; font-weight:800; }
     .sight-card .photo-credit { display:block; margin-top:8px; color:var(--muted); font-size:9px; font-weight:400; text-decoration:none; }
     .tip,.fallback { margin-top:16px; line-height:1.8; }
-    .mini-plan { margin-top:14px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .mini-plan article { padding:14px; border:1px solid var(--line); border-radius:7px; }
+    .plan-heading { margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
+    .plan-heading span { color:var(--muted); font-family:Arial,sans-serif; font-size:10px; font-weight:800; letter-spacing:.04em; }
+    .plan-heading h2 { margin:5px 0 0; color:var(--navy); }
+    .mini-plan { margin-top:14px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; counter-reset:trip-day; }
+    .mini-plan article { position:relative; padding:16px 58px 16px 16px; border:1px solid var(--line); border-right:4px solid var(--teal); border-radius:7px; background:#fbfdfd; break-inside:avoid; }
+    .day-index { position:absolute; top:14px; right:14px; display:grid; place-items:center; width:32px; height:32px; border-radius:6px; background:var(--cream); color:var(--navy); font-family:Arial,sans-serif; font-size:11px; font-weight:800; }
     .mini-plan h3 { margin:0 0 8px; color:var(--navy); }
     .mini-plan li { margin:6px 0; line-height:1.7; }
     [lang="ckb"], [dir="rtl"] { font-family:UniSIRWAN,Arial,sans-serif; }
@@ -209,11 +226,28 @@ function smartTripStyles() {
     .contact .button { border-color:var(--teal); background:var(--teal); color:var(--navy); }
     .notes { white-space:pre-wrap; line-height:1.6; }
     .footer { padding:26px 16px; color:var(--muted); font-size:11px; text-align:center; }
+    @media print {
+      body { border-top:0; background:#fff; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+      .header { border-bottom:2px solid var(--teal); }
+      .header-inner,.shell { width:100%; }
+      .shell { padding:10px 0 0; }
+      .document-tools,.contact-top,.contact .button { display:none!important; }
+      .hero { box-shadow:none; }
+      .hero,.section,.flight-card,.hotel-card,.sight-card,.mini-plan article,.contact { break-inside:avoid; }
+      .section { margin-top:14px; }
+      .sight-photo img { max-height:170px; }
+      .plan-heading { break-after:avoid-page; }
+      .mini-plan { display:block; }
+      .mini-plan article { margin-top:9px; padding-top:12px; padding-bottom:12px; }
+      a { text-decoration:none; }
+    }
     @media(max-width:760px) {
       .header-inner { min-height:70px; }
       .brand img { width:72px; height:48px; }
       .brand span,.contact-top { display:none; }
       .shell { width:min(100% - 20px,1120px); padding-top:14px; }
+      .document-tools { align-items:stretch; flex-direction:column; }
+      .tool-actions,.tool-button { width:100%; }
       .hero { padding:20px; grid-template-columns:1fr; }
       .countdown { min-width:0; width:100%; }
       .section { padding:18px; }
@@ -226,11 +260,17 @@ function smartTripStyles() {
   `;
 }
 
-function generateSmartTripHtml(trip) {
+function generateSmartTripHtml(trip, options = {}) {
   const destination = [trip.destinationCity, trip.destinationCountry].filter(Boolean).join(", ");
   const countdownAt = countdownTimestamp(trip.departureDate, trip.departureTime);
   const contactMessage = `Hello MK Business and Travel, I need help with my Smart Trip to ${destination}.`;
   const firstName = passengerFirstName(trip);
+  const outboundSegments = (trip.flight?.segments || []).filter((segment) => segment.journeyDirection !== "return");
+  const destinationArrivalDate = outboundSegments.at(-1)?.arrivalDate || trip.departureDate;
+  const tripDayCount = calculateTripDayCount(destinationArrivalDate, trip.returnDate, trip.hotels);
+  const logoUrl = publicUrl("/assets/mk-logo.png", options.baseUrl);
+  const fontUrl = publicUrl("/assets/UniSIRWAN%20Noor%20Regular.ttf", options.baseUrl);
+  const pdfUrl = trip.token ? `/smart-trip/${encodeURIComponent(trip.token)}/pdf` : "";
   const services = [
     ["01", "eSIM", "بۆ ئەوەی لە گەشتەکەتدا بێ ئینتەرنێت نەبیت، هەر ئێستا دەتوانیت eSIM ـی گونجاو بۆ وڵاتی مەبەست داوا بکەیت.", `سڵاو MK Business and Travel، دەمەوێت eSIM بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
     ["02", "ترانسفێری فڕۆکەخانە", "بە ئارامی بگەڕێ؛ دەتوانین گواستنەوەت لە فڕۆکەخانە بۆ هۆتێل و لە هۆتێل بۆ فڕۆکەخانە بۆ ڕێک بخەین.", `سڵاو MK Business and Travel، دەمەوێت ترانسفێری فڕۆکەخانە بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
@@ -243,21 +283,22 @@ function generateSmartTripHtml(trip) {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <title>Smart Trip to ${escapeHtml(destination)} | MK Business and Travel</title>
-  <style>${smartTripStyles()}</style>
+  <style>${smartTripStyles(fontUrl)}</style>
 </head>
 <body>
   <header class="header"><div class="header-inner">
-    <div class="brand"><img src="/assets/mk-logo.png" alt="MK Business and Travel logo"><div><strong>MK Business and Travel</strong><span>Grand Swiss Hotel, Ground Floor, Pirmam</span></div></div>
+    <div class="brand"><img src="${escapeHtml(logoUrl)}" alt="MK Business and Travel logo"><div><strong>MK Business and Travel</strong><span>Grand Swiss Hotel, Ground Floor, Pirmam</span></div></div>
     <a class="contact-top" href="${escapeHtml(whatsappUrl(contactMessage))}" target="_blank" rel="noreferrer">07500229292</a>
   </div></header>
   <main class="shell">
+    ${options.printMode ? "" : `<nav class="document-tools" aria-label="Smart Trip document actions"><span>MK Smart Trip Guide · ${tripDayCount} day plan</span><div class="tool-actions"><button class="tool-button" type="button" onclick="window.print()">Print / Save as PDF</button>${pdfUrl ? `<a class="tool-button primary" href="${escapeHtml(pdfUrl)}">Download PDF</a>` : ""}</div></nav>`}
     <section class="hero">
       <div>
         <span class="eyebrow">YOUR SMART TRIP</span>
         <h1>${display(destination)}</h1>
         <p class="traveler-wish" dir="rtl" lang="ckb">بە هیوای گەشتێکی خۆش، <strong>${display(firstName)}</strong></p>
         <p class="passenger-full">${display(trip.passengerName)}</p>
-        <div class="hero-meta"><span class="pill">PNR ${display(trip.flight?.pnr)}</span><span class="pill">Departure ${display(trip.departureDate)}</span>${trip.returnDate ? `<span class="pill">Return ${display(trip.returnDate)}</span>` : ""}</div>
+        <div class="hero-meta"><span class="pill">PNR ${display(trip.flight?.pnr)}</span><span class="pill">${tripDayCount} day plan</span><span class="pill">Departure ${display(trip.departureDate)}</span>${trip.returnDate ? `<span class="pill">Return ${display(trip.returnDate)}</span>` : ""}</div>
       </div>
       <div class="countdown" data-countdown="${countdownAt}"><span>Time until departure</span><div class="count-grid"><div><b data-days>--</b><small>DAYS</small></div><div><b data-hours>--</b><small>HOURS</small></div><div><b data-minutes>--</b><small>MIN</small></div><div><b data-seconds>--</b><small>SEC</small></div></div></div>
     </section>

@@ -683,6 +683,70 @@ function getSmartTripByToken(token) {
   return mapSmartTrip(database().prepare("SELECT * FROM smart_trips WHERE token = ?").get(token));
 }
 
+function getSmartTripById(id) {
+  return mapSmartTrip(database().prepare("SELECT * FROM smart_trips WHERE id = ?").get(id));
+}
+
+function updateSmartTrip(id, data) {
+  const db = database();
+  db.exec("BEGIN");
+  try {
+    const result = db.prepare(`
+      UPDATE smart_trips SET
+        passenger_name = ?, passenger_first_name_kurdish = ?, destination_city = ?, destination_country = ?,
+        customer_whatsapp = ?, notes = ?, departure_date = ?, departure_time = ?, return_date = ?,
+        flight_json = ?, sightseeing_requested = ?, sightseeing_status = ?, sightseeing_json = ?,
+        travel_tip = ?, mini_plan_json = ?, expires_at = ?
+      WHERE id = ?
+    `).run(
+      data.passengerName,
+      data.passengerFirstNameKurdish,
+      data.destinationCity,
+      data.destinationCountry,
+      data.customerWhatsapp,
+      data.notes,
+      data.departureDate,
+      data.departureTime,
+      data.returnDate,
+      JSON.stringify(data.flight),
+      data.sightseeingRequested ? 1 : 0,
+      data.sightseeingStatus,
+      JSON.stringify(data.sightseeing),
+      data.travelTip,
+      JSON.stringify(data.miniPlan),
+      data.expiresAt,
+      id
+    );
+    if (!result.changes) throw new Error("Smart Trip link not found.");
+
+    db.prepare("DELETE FROM smart_trip_hotels WHERE smart_trip_id = ?").run(id);
+    const hotelStmt = db.prepare(`
+      INSERT INTO smart_trip_hotels (
+        smart_trip_id, position, hotel_name, hotel_city, hotel_address,
+        check_in_date, check_out_date, hotel_phone, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    data.hotels.forEach((hotel, index) => {
+      hotelStmt.run(
+        id,
+        index,
+        hotel.hotelName,
+        hotel.hotelCity,
+        hotel.hotelAddress,
+        hotel.checkInDate,
+        hotel.checkOutDate,
+        hotel.hotelPhone,
+        hotel.notes
+      );
+    });
+    db.exec("COMMIT");
+    return getSmartTripById(id);
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 function listSmartTrips() {
   return database().prepare(`
     SELECT * FROM smart_trips
@@ -767,7 +831,9 @@ module.exports = {
   addGeneratedFile,
   createSmartTrip,
   deleteSmartTrip,
+  getSmartTripById,
   getSmartTripByToken,
   listSmartTrips,
-  purgeExpiredSmartTrips
+  purgeExpiredSmartTrips,
+  updateSmartTrip
 };

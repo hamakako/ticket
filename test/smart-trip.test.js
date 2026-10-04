@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  calculateTripDayCount,
   calculateSmartTripExpiry,
   deriveSmartTripPrefill,
   hotelMapLinks,
@@ -62,6 +63,15 @@ test("moves a yearless January return into the year after a December departure",
   assert.equal(input.returnDate, "2027-01-05");
 });
 
+test("creates one daily plan day for every inclusive destination date", () => {
+  assert.equal(calculateTripDayCount("2026-10-01", "2026-10-10"), 10);
+  assert.equal(calculateTripDayCount("2026-10-30", "2026-11-02"), 4);
+});
+
+test("uses hotel checkout to determine trip length when there is no return flight", () => {
+  assert.equal(calculateTripDayCount("2026-10-01", "", [{ checkOutDate: "2026-10-05" }]), 5);
+});
+
 test("never creates a Smart Trip link that is already expired", () => {
   const now = Date.UTC(2026, 9, 4, 12);
   assert.equal(
@@ -93,6 +103,7 @@ test("creates encoded Google Maps search and direction links", () => {
 test("renders branded flight, hotel, sightseeing, services, and countdown sections", () => {
   const html = generateSmartTripHtml({
     passengerName: "TEST PASSENGER",
+    token: "abcdefghijklmnopqrstuvwxyz123456",
     passengerFirstNameKurdish: "تێست",
     destinationCity: "Trabzon",
     destinationCountry: "Türkiye",
@@ -111,6 +122,10 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   });
   assert.match(html, /MK Business and Travel/);
   assert.match(html, /Time until departure/);
+  assert.match(html, /Print \/ Save as PDF/);
+  assert.match(html, /Download PDF/);
+  assert.match(html, /@page \{ size:A4/);
+  assert.match(html, /8 day plan/);
   assert.match(html, /Test Hotel/);
   assert.match(html, /Direction to hotel/);
   assert.match(html, /Atatürk Köşkü/);

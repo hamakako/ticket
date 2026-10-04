@@ -1624,6 +1624,72 @@ label textarea {
   color: var(--navy);
 }
 
+.ticket-update-dialog {
+  width: min(620px, calc(100% - 28px));
+  max-height: calc(100vh - 36px);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(23, 12, 121, 0.2);
+}
+
+.ticket-update-dialog::backdrop {
+  background: rgba(18, 24, 42, 0.58);
+}
+
+.ticket-update-form {
+  padding: 24px;
+  border-top: 6px solid var(--teal);
+}
+
+.ticket-update-heading,
+.ticket-update-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ticket-update-heading h2 {
+  margin: 2px 0 0;
+  color: var(--navy);
+}
+
+.ticket-update-copy {
+  margin: 18px 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.ticket-update-trip {
+  margin-bottom: 18px;
+  padding: 14px;
+  border-left: 4px solid var(--teal);
+  border-radius: 6px;
+  background: #f5fafb;
+}
+
+.ticket-update-trip strong,
+.ticket-update-trip span {
+  display: block;
+}
+
+.ticket-update-trip strong {
+  color: var(--navy);
+}
+
+.ticket-update-trip span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ticket-update-actions {
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 1080px) {
   .search-workspace {
     grid-template-columns: 1fr;
@@ -1713,5 +1779,18 @@ label textarea {
 
   .smart-trip-link-dates {
     grid-template-columns: 1fr;
+  }
+
+  .ticket-update-form {
+    padding: 18px;
+  }
+
+  .ticket-update-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .ticket-update-actions button {
+    width: 100%;
   }
 }
