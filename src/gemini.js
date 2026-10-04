@@ -45,6 +45,7 @@ function schemaFor(type) {
           arrivalTime: "",
           duration: "",
           layoverAfter: "",
+          journeyDirection: "",
           terminal: "",
           gate: "",
           boardingTime: ""
@@ -104,6 +105,7 @@ function buildPrompt(type, sourceLabel = "uploaded document") {
     "For each segment, always populate duration. Copy the printed duration when available; otherwise calculate scheduled flight duration from the explicit departure and arrival dates, times, and airports, accounting for the airports' local time zones and date-specific daylight-saving time.",
     "For each connecting segment except the final segment of a continuous journey, populate layoverAfter. Copy a printed transit/connection duration when available; otherwise calculate the time from that segment's arrival date/time to the next segment's departure date/time.",
     "Only treat a gap as transit when the next flight continues from the same airport or city within 48 hours. Do not treat time spent at the trip destination before a return flight as a layover; use Not specified for that gap.",
+    "For every segment, set journeyDirection to departure for the outbound journey or return for the journey back. A connection remains part of the same direction. For a one-way itinerary, use departure for every segment.",
     "Write calculated durations compactly, for example 2h 45m or 55m. Never change or invent a departure date, arrival date, departure time, arrival time, airport, airline, or flight number in order to calculate a duration."
   ] : [];
 

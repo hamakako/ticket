@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { findReturnStartIndex } = require("./flight-journeys");
 
 const ROOT = path.resolve(__dirname, "..");
 const LOGO_PATH = path.join(ROOT, "public", "assets", "mk-logo.png");
@@ -346,6 +347,33 @@ function sharedStyles() {
       color: var(--muted);
       font-weight: 600;
     }
+    .journey-divider td {
+      padding: 7px 8px;
+      border-top: 2px solid var(--teal);
+      border-bottom: 1px solid var(--teal);
+      background: rgba(239, 227, 202, 0.55);
+      color: var(--navy);
+      font-size: 10.5px;
+      font-weight: 800;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .journey-divider.return td {
+      border-top-width: 3px;
+      background: rgba(138, 203, 208, 0.22);
+    }
+    .journey-divider-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .journey-divider-label::before,
+    .journey-divider-label::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: var(--teal);
+    }
     .airline-identity {
       display: flex;
       align-items: center;
@@ -564,7 +592,13 @@ function hotelMedia(data) {
 }
 
 function flightSegmentRows(segments) {
+  const returnStart = findReturnStartIndex(segments);
   return segments.map((segment, index) => `
+    ${returnStart > 0 && (index === 0 || index === returnStart) ? `
+      <tr class="journey-divider ${index === returnStart ? "return" : "departure"}">
+        <td colspan="5"><div class="journey-divider-label">${index === returnStart ? "Return Flight" : "Departure Flight"}</div></td>
+      </tr>
+    ` : ""}
     <tr>
       <td>
         ${airlineIdentity(segment)}
@@ -592,7 +626,13 @@ function flightSegmentRows(segments) {
 }
 
 function flightKurdishRows(segments) {
+  const returnStart = findReturnStartIndex(segments);
   return segments.map((segment, index) => `
+    ${returnStart > 0 && (index === 0 || index === returnStart) ? `
+      <tr class="journey-divider ${index === returnStart ? "return" : "departure"}">
+        <td colspan="5"><div class="journey-divider-label">${index === returnStart ? "فڕینی گەڕانەوە" : "فڕینی ڕۆیشتن"}</div></td>
+      </tr>
+    ` : ""}
     <tr>
       <td>${display(segment.airline)}<br><span class="muted">${display(segment.flightNumber)}</span></td>
       <td><span class="route">${display(segment.departureCity)} ← ${display(segment.arrivalCity)}</span><br><span class="muted">${display(segment.departureAirport)} ← ${display(segment.arrivalAirport)}</span></td>

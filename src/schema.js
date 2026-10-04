@@ -74,6 +74,7 @@ function normalizeFlightData(input = {}) {
       arrivalTime: cleanText(segment?.arrivalTime),
       duration: cleanText(segment?.duration),
       layoverAfter: cleanText(segment?.layoverAfter),
+      journeyDirection: cleanText(segment?.journeyDirection),
       terminal: cleanText(segment?.terminal),
       gate: cleanText(segment?.gate),
       boardingTime: cleanText(segment?.boardingTime)
@@ -103,6 +104,7 @@ function normalizeFlightData(input = {}) {
       arrivalTime: NOT_SPECIFIED,
       duration: NOT_SPECIFIED,
       layoverAfter: NOT_SPECIFIED,
+      journeyDirection: NOT_SPECIFIED,
       terminal: NOT_SPECIFIED,
       gate: NOT_SPECIFIED,
       boardingTime: NOT_SPECIFIED

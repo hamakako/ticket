@@ -1,4 +1,5 @@
 const NOT_SPECIFIED = "Not specified";
+const { applyJourneyDirections } = require("./flight-journeys");
 
 function meaningful(value) {
   const text = String(value || "").trim();
@@ -121,7 +122,7 @@ function enrichFlightTimings(data = {}) {
     };
   });
 
-  return { ...data, segments };
+  return applyJourneyDirections({ ...data, segments });
 }
 
 module.exports = {

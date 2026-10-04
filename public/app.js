@@ -16,6 +16,7 @@ const emptyFlight = () => ({
     arrivalTime: "",
     duration: "",
     layoverAfter: "",
+    journeyDirection: "departure",
     terminal: "",
     gate: "",
     boardingTime: ""
@@ -495,6 +496,7 @@ function bindFormEvents(type) {
         arrivalTime: "",
         duration: "",
         layoverAfter: "",
+        journeyDirection: "departure",
         terminal: "",
         gate: "",
         boardingTime: ""
