@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Trip Links | MK Business and Travel</title>
+  <link rel="stylesheet" href="/styles.css?v=20261004-smart-trip-manager">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block brand-with-nav">
+      <a class="brand-home" href="/">
+        <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+        <div><h1>MK Business and Travel</h1><p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p></div>
+      </a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="/">Itineraries</a>
+        <a href="/flight-search.html">Live Flight Search</a>
+        <a href="/ticket-edit.html">Ticket Edit</a>
+        <a class="active" href="/smart-trips.html">Smart Trip Links</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell smart-trip-manager">
+    <section class="manager-heading">
+      <div><p class="eyebrow">Smart Trip</p><h2>Customer links</h2><p>Open, copy, or permanently delete an active Smart Trip link.</p></div>
+      <button class="secondary-button" type="button" data-refresh-smart-trips>Refresh</button>
+    </section>
+    <p class="status" data-smart-trip-manager-status aria-live="polite"></p>
+    <section class="smart-trip-link-list" data-smart-trip-link-list></section>
+  </main>
+  <script src="/smart-trips.js?v=20261004-1"></script>
+</body>
+</html>

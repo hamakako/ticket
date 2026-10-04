@@ -93,6 +93,7 @@ test("creates encoded Google Maps search and direction links", () => {
 test("renders branded flight, hotel, sightseeing, services, and countdown sections", () => {
   const html = generateSmartTripHtml({
     passengerName: "TEST PASSENGER",
+    passengerFirstNameKurdish: "تێست",
     destinationCity: "Trabzon",
     destinationCountry: "Türkiye",
     departureDate: "01/10/2026",
@@ -103,7 +104,7 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
     hotels: [{ hotelName: "Test Hotel", hotelCity: "Trabzon", hotelAddress: "Center", checkInDate: "2026-10-01", checkOutDate: "2026-10-08", hotelPhone: "", notes: "" }],
     sightseeingRequested: true,
     sightseeingStatus: "ready",
-    sightseeing: [{ name: "Atatürk Köşkü", description: "وەسفێکی کورت", mapUrl: "https://www.google.com/maps/search/?api=1&query=test" }],
+    sightseeing: [{ name: "Atatürk Köşkü", description: "وەسفێکی کورت", mapUrl: "https://www.google.com/maps/search/?api=1&query=test", imageUrl: "https://upload.wikimedia.org/test.jpg", imageSourceUrl: "https://en.wikipedia.org/?curid=1" }],
     travelTip: "تێبینی",
     miniPlan: [{ title: "ڕۆژی یەکەم", items: ["گەشت"] }],
     notes: ""
@@ -113,7 +114,13 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   assert.match(html, /Test Hotel/);
   assert.match(html, /Direction to hotel/);
   assert.match(html, /Atatürk Köşkü/);
-  assert.match(html, /Airport Transfer/);
+  assert.match(html, /بە هیوای گەشتێکی خۆش،/);
+  assert.match(html, /تێست/);
+  assert.match(html, /https:\/\/upload\.wikimedia\.org\/test\.jpg/);
+  assert.match(html, /گەشتەکەت تەواو بکە/);
+  assert.match(html, /ترانسفێری فڕۆکەخانە/);
+  assert.match(html, /گەشتی ڕۆژانە/);
+  assert.match(html, /eSIM/);
   assert.match(html, /noindex,nofollow/);
 });
 

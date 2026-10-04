@@ -21,6 +21,13 @@ function whatsappUrl(message) {
   return `https://wa.me/${COMPANY_WHATSAPP}?text=${encodeURIComponent(message)}`;
 }
 
+function passengerFirstName(trip) {
+  if (String(trip.passengerFirstNameKurdish || "").trim()) return trip.passengerFirstNameKurdish.trim();
+  const parts = String(trip.passengerName || "").trim().split(/\s+/).filter(Boolean);
+  const titles = /^(mr|mrs|ms|miss|dr)\.?$/i;
+  return parts.find((part) => !titles.test(part)) || parts[0] || "گەشتیار";
+}
+
 function countdownTimestamp(dateValue, timeValue) {
   const date = parseDate(dateValue);
   const time = parseTime(timeValue) || { hour: 0, minute: 0 };
@@ -89,10 +96,12 @@ function sightseeingCards(trip) {
         <div class="sight-grid">
           ${trip.sightseeing.map((place, index) => `
             <article class="sight-card">
+              ${place.imageUrl ? `<a class="sight-photo" href="${escapeHtml(place.imageSourceUrl || place.mapUrl)}" target="_blank" rel="noreferrer"><img src="${escapeHtml(place.imageUrl)}" alt="${display(place.imageAlt || place.name)}" loading="lazy" referrerpolicy="no-referrer"></a>` : ""}
               <span class="sight-number">${index + 1}</span>
               <h3>${display(place.name)}</h3>
               <p>${display(place.description, "")}</p>
               <a href="${escapeHtml(place.mapUrl)}" target="_blank" rel="noreferrer">کردنەوە لە Google Maps</a>
+              ${place.imageSourceUrl ? `<a class="photo-credit" href="${escapeHtml(place.imageSourceUrl)}" target="_blank" rel="noreferrer">سەرچاوەی وێنە: Wikipedia / Wikimedia</a>` : ""}
             </article>
           `).join("")}
         </div>
@@ -118,6 +127,7 @@ function sightseeingCards(trip) {
 
 function smartTripStyles() {
   return `
+    @font-face { font-family:UniSIRWAN; src:url('/assets/UniSIRWAN%20Noor%20Regular.ttf') format('truetype'); font-display:swap; }
     :root { --navy:#170C79; --teal:#8ACBD0; --cream:#EFE3CA; --ink:#172033; --muted:#657084; --line:#d8e7e9; }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
@@ -136,6 +146,9 @@ function smartTripStyles() {
     .eyebrow,.section-heading span { color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; }
     h1 { margin:6px 0 8px; color:var(--navy); font-size:clamp(30px,6vw,54px); line-height:1; }
     .hero p { margin:0; color:var(--muted); }
+    .traveler-wish { margin-top:18px!important; color:var(--navy)!important; font-family:UniSIRWAN,Arial,sans-serif; font-size:clamp(23px,3.3vw,34px); line-height:1.5; }
+    .traveler-wish strong { color:var(--navy); }
+    .passenger-full { margin-top:2px!important; font-size:11px; letter-spacing:.03em; }
     .hero-meta { margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; }
     .pill { padding:8px 11px; border:1px solid var(--line); border-radius:6px; background:#f8fbfb; font-size:12px; font-weight:700; }
     .countdown { min-width:270px; padding:20px; border-radius:8px; background:var(--navy); color:#fff; text-align:center; }
@@ -170,19 +183,26 @@ function smartTripStyles() {
     .button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:9px 14px; border:1px solid var(--navy); border-radius:6px; background:var(--navy); color:#fff; font-size:12px; font-weight:800; text-decoration:none; }
     .button.secondary { border-color:var(--teal); background:#eef7f8; color:var(--navy); }
     .sight-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .sight-card { padding:16px; border:1px solid var(--line); border-radius:7px; position:relative; }
+    .sight-card { padding:16px; border:1px solid var(--line); border-radius:7px; position:relative; overflow:hidden; }
+    .sight-photo { display:block; margin:-16px -16px 14px; background:#eef5f5; }
+    .sight-photo img { display:block; width:100%; aspect-ratio:16/9; object-fit:cover; }
     .sight-number { margin-bottom:12px; }
     .sight-card p { color:var(--muted); line-height:1.8; }
     .sight-card a { color:var(--navy); font-size:12px; font-weight:800; }
+    .sight-card .photo-credit { display:block; margin-top:8px; color:var(--muted); font-size:9px; font-weight:400; text-decoration:none; }
     .tip,.fallback { margin-top:16px; line-height:1.8; }
     .mini-plan { margin-top:14px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
     .mini-plan article { padding:14px; border:1px solid var(--line); border-radius:7px; }
     .mini-plan h3 { margin:0 0 8px; color:var(--navy); }
     .mini-plan li { margin:6px 0; line-height:1.7; }
+    [lang="ckb"], [dir="rtl"] { font-family:UniSIRWAN,Arial,sans-serif; }
+    .services-intro { margin:-8px 0 18px; color:var(--muted); font-family:UniSIRWAN,Arial,sans-serif; line-height:1.8; }
     .services { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-    .service { padding:18px; border:1px solid var(--line); border-radius:7px; text-decoration:none; }
+    .service { padding:20px; border:1px solid var(--line); border-top:4px solid var(--teal); border-radius:7px; background:#f8fbfb; text-decoration:none; }
+    .service-mark { display:grid!important; place-items:center; width:34px; height:34px; margin:0 0 14px auto!important; border-radius:6px; background:var(--cream); color:var(--navy)!important; font-family:Arial,sans-serif; font-size:11px!important; font-weight:800; }
     .service strong { display:block; color:var(--navy); }
-    .service span { display:block; margin-top:7px; color:var(--muted); font-size:12px; }
+    .service span { display:block; margin-top:8px; color:var(--muted); font-size:13px; line-height:1.8; }
+    .service b { display:block; margin-top:14px; color:var(--navy); font-size:11px; }
     .contact { margin-top:24px; padding:24px; border-radius:8px; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:space-between; gap:20px; }
     .contact h2 { margin:0 0 5px; }
     .contact p { margin:0; color:#c7edf0; }
@@ -210,10 +230,11 @@ function generateSmartTripHtml(trip) {
   const destination = [trip.destinationCity, trip.destinationCountry].filter(Boolean).join(", ");
   const countdownAt = countdownTimestamp(trip.departureDate, trip.departureTime);
   const contactMessage = `Hello MK Business and Travel, I need help with my Smart Trip to ${destination}.`;
+  const firstName = passengerFirstName(trip);
   const services = [
-    ["eSIM", "Internet package for your destination"],
-    ["Airport Transfer", "Arrange pickup between airport and hotel"],
-    ["Daily Tours", "Ask about private and group tours"]
+    ["01", "eSIM", "بۆ ئەوەی لە گەشتەکەتدا بێ ئینتەرنێت نەبیت، هەر ئێستا دەتوانیت eSIM ـی گونجاو بۆ وڵاتی مەبەست داوا بکەیت.", `سڵاو MK Business and Travel، دەمەوێت eSIM بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
+    ["02", "ترانسفێری فڕۆکەخانە", "بە ئارامی بگەڕێ؛ دەتوانین گواستنەوەت لە فڕۆکەخانە بۆ هۆتێل و لە هۆتێل بۆ فڕۆکەخانە بۆ ڕێک بخەین.", `سڵاو MK Business and Travel، دەمەوێت ترانسفێری فڕۆکەخانە بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
+    ["03", "گەشتی ڕۆژانە", "بۆ بینینی جوانترین شوێنەکانی شار، گەشتی ڕۆژانەی تایبەت یان گروپی بە پێی کات و حەزەکانت داوا بکە.", `سڵاو MK Business and Travel، دەمەوێت زانیاری گەشتی ڕۆژانە بۆ ${destination} وەربگرم.`]
   ];
   return `<!doctype html>
 <html lang="en">
@@ -234,7 +255,8 @@ function generateSmartTripHtml(trip) {
       <div>
         <span class="eyebrow">YOUR SMART TRIP</span>
         <h1>${display(destination)}</h1>
-        <p>Prepared for ${display(trip.passengerName)}</p>
+        <p class="traveler-wish" dir="rtl" lang="ckb">بە هیوای گەشتێکی خۆش، <strong>${display(firstName)}</strong></p>
+        <p class="passenger-full">${display(trip.passengerName)}</p>
         <div class="hero-meta"><span class="pill">PNR ${display(trip.flight?.pnr)}</span><span class="pill">Departure ${display(trip.departureDate)}</span>${trip.returnDate ? `<span class="pill">Return ${display(trip.returnDate)}</span>` : ""}</div>
       </div>
       <div class="countdown" data-countdown="${countdownAt}"><span>Time until departure</span><div class="count-grid"><div><b data-days>--</b><small>DAYS</small></div><div><b data-hours>--</b><small>HOURS</small></div><div><b data-minutes>--</b><small>MIN</small></div><div><b data-seconds>--</b><small>SEC</small></div></div></div>
@@ -244,10 +266,10 @@ function generateSmartTripHtml(trip) {
     ${trip.hotels.length ? `<section class="section"><div class="section-heading"><span>STAY</span><h2>Hotels</h2></div><div class="hotel-list">${hotelCards(trip)}</div></section>` : ""}
     ${sightseeingCards(trip)}
     ${trip.notes ? `<section class="section"><div class="section-heading"><span>NOTES</span><h2>Trip notes</h2></div><div class="notes">${display(trip.notes)}</div></section>` : ""}
-    <section class="section"><div class="section-heading"><span>MK SERVICES</span><h2>Complete your trip</h2></div><div class="services">${services.map(([name, description]) => `<a class="service" href="${escapeHtml(whatsappUrl(`Hello MK Business and Travel, I need ${name} for my trip to ${destination}.`))}" target="_blank" rel="noreferrer"><strong>${name}</strong><span>${description}</span></a>`).join("")}</div></section>
-    <section class="contact"><div><h2>Need help with your trip?</h2><p>Contact MK Business and Travel on WhatsApp.</p></div><a class="button" href="${escapeHtml(whatsappUrl(contactMessage))}" target="_blank" rel="noreferrer">Contact MK WhatsApp</a></section>
+    <section class="section" dir="rtl" lang="ckb"><div class="section-heading"><span>MK SERVICES</span><h2>گەشتەکەت تەواو بکە</h2></div><p class="services-intro">پێش گەشتەکەت ئەم خزمەتگوزارییانە ڕێک بخە بۆ ئەوەی بە ئارامی و بەبێ نیگەرانی گەشت بکەیت.</p><div class="services">${services.map(([number, name, description, message]) => `<a class="service" href="${escapeHtml(whatsappUrl(message))}" target="_blank" rel="noreferrer"><span class="service-mark">${number}</span><strong>${name}</strong><span>${description}</span><b>داواکاری لە WhatsApp</b></a>`).join("")}</div></section>
+    <section class="contact" dir="rtl" lang="ckb"><div><h2>پێویستت بە یارمەتییە؟</h2><p>تیمی MK Business and Travel لە WhatsApp وەڵامت دەداتەوە.</p></div><a class="button" href="${escapeHtml(whatsappUrl(contactMessage))}" target="_blank" rel="noreferrer">پەیوەندی بە MK</a></section>
   </main>
-  <footer class="footer">This private trip link is available until ${display(new Date(trip.expiresAt).toISOString().slice(0, 10))}.</footer>
+  <footer class="footer" dir="rtl" lang="ckb">ئەم لینکە تایبەتە تا ${display(new Date(trip.expiresAt).toISOString().slice(0, 10))} بەردەستە.</footer>
   <script>
     (() => {
       const root = document.querySelector('[data-countdown]');

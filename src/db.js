@@ -115,6 +115,7 @@ function initDatabase() {
       token TEXT NOT NULL UNIQUE,
       flight_itinerary_id INTEGER NOT NULL,
       passenger_name TEXT NOT NULL,
+      passenger_first_name_kurdish TEXT NOT NULL DEFAULT '',
       destination_city TEXT NOT NULL,
       destination_country TEXT NOT NULL DEFAULT '',
       customer_whatsapp TEXT NOT NULL DEFAULT '',
@@ -162,6 +163,7 @@ function initDatabase() {
   ensureColumn("hotel_itineraries", "photo_attribution", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("hotel_itineraries", "photo_attribution_url", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("generated_files", "file_kind", "TEXT NOT NULL DEFAULT 'itinerary-html'");
+  ensureColumn("smart_trips", "passenger_first_name_kurdish", "TEXT NOT NULL DEFAULT ''");
 
   return db;
 }
@@ -596,6 +598,7 @@ function mapSmartTrip(row) {
     token: row.token,
     flightItineraryId: row.flight_itinerary_id,
     passengerName: row.passenger_name,
+    passengerFirstNameKurdish: row.passenger_first_name_kurdish,
     destinationCity: row.destination_city,
     destinationCountry: row.destination_country,
     customerWhatsapp: row.customer_whatsapp,
@@ -621,16 +624,17 @@ function createSmartTrip(data) {
   try {
     const result = db.prepare(`
       INSERT INTO smart_trips (
-        token, flight_itinerary_id, passenger_name, destination_city, destination_country,
+        token, flight_itinerary_id, passenger_name, passenger_first_name_kurdish, destination_city, destination_country,
         customer_whatsapp, notes, departure_date, departure_time, return_date, flight_json,
         sightseeing_requested, sightseeing_status, sightseeing_json, travel_tip,
         mini_plan_json, expires_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.token,
       data.flightItineraryId,
       data.passengerName,
+      data.passengerFirstNameKurdish,
       data.destinationCity,
       data.destinationCountry,
       data.customerWhatsapp,
@@ -677,6 +681,19 @@ function createSmartTrip(data) {
 
 function getSmartTripByToken(token) {
   return mapSmartTrip(database().prepare("SELECT * FROM smart_trips WHERE token = ?").get(token));
+}
+
+function listSmartTrips() {
+  return database().prepare(`
+    SELECT * FROM smart_trips
+    WHERE datetime(expires_at) > datetime('now')
+    ORDER BY datetime(created_at) DESC, id DESC
+  `).all().map(mapSmartTrip);
+}
+
+function deleteSmartTrip(id) {
+  const result = database().prepare("DELETE FROM smart_trips WHERE id = ?").run(id);
+  return Number(result.changes || 0) > 0;
 }
 
 function purgeExpiredSmartTrips() {
@@ -749,6 +766,8 @@ module.exports = {
   purgeExpiredItineraries,
   addGeneratedFile,
   createSmartTrip,
+  deleteSmartTrip,
   getSmartTripByToken,
+  listSmartTrips,
   purgeExpiredSmartTrips
 };
