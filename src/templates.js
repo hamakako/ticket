@@ -328,6 +328,24 @@ function sharedStyles() {
     .muted {
       color: var(--muted);
     }
+    .layover-row td {
+      padding: 5px 8px;
+      border-top: 1px dashed var(--teal);
+      background: #f4fafb;
+      color: var(--navy);
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+    .layover-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .layover-note span:last-child {
+      color: var(--muted);
+      font-weight: 600;
+    }
     .airline-identity {
       display: flex;
       align-items: center;
@@ -546,7 +564,7 @@ function hotelMedia(data) {
 }
 
 function flightSegmentRows(segments) {
-  return segments.map((segment) => `
+  return segments.map((segment, index) => `
     <tr>
       <td>
         ${airlineIdentity(segment)}
@@ -560,11 +578,21 @@ function flightSegmentRows(segments) {
       <td>${display(segment.arrivalDate)}<br><span class="muted">${display(segment.arrivalTime)}</span></td>
       <td>${display(segment.duration)}</td>
     </tr>
+    ${index < segments.length - 1 && meaningful(segment.layoverAfter) ? `
+      <tr class="layover-row">
+        <td colspan="5">
+          <div class="layover-note">
+            <span>Transit in ${display(segment.arrivalCity)}: ${display(segment.layoverAfter)}</span>
+            <span>Before ${display(segments[index + 1].airline)} ${display(segments[index + 1].flightNumber)}</span>
+          </div>
+        </td>
+      </tr>
+    ` : ""}
   `).join("");
 }
 
 function flightKurdishRows(segments) {
-  return segments.map((segment) => `
+  return segments.map((segment, index) => `
     <tr>
       <td>${display(segment.airline)}<br><span class="muted">${display(segment.flightNumber)}</span></td>
       <td><span class="route">${display(segment.departureCity)} ← ${display(segment.arrivalCity)}</span><br><span class="muted">${display(segment.departureAirport)} ← ${display(segment.arrivalAirport)}</span></td>
@@ -572,6 +600,16 @@ function flightKurdishRows(segments) {
       <td>${display(segment.arrivalDate)}<br><span class="muted">${display(segment.arrivalTime)}</span></td>
       <td>${display(segment.duration)}</td>
     </tr>
+    ${index < segments.length - 1 && meaningful(segment.layoverAfter) ? `
+      <tr class="layover-row">
+        <td colspan="5">
+          <div class="layover-note">
+            <span>وەستان لە ${display(segment.arrivalCity)}: ${display(segment.layoverAfter)}</span>
+            <span>پێش فڕینی ${display(segments[index + 1].airline)} ${display(segments[index + 1].flightNumber)}</span>
+          </div>
+        </td>
+      </tr>
+    ` : ""}
   `).join("");
 }
 

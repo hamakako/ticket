@@ -15,6 +15,7 @@ const emptyFlight = () => ({
     arrivalDate: "",
     arrivalTime: "",
     duration: "",
+    layoverAfter: "",
     terminal: "",
     gate: "",
     boardingTime: ""
@@ -493,6 +494,7 @@ function bindFormEvents(type) {
         arrivalDate: "",
         arrivalTime: "",
         duration: "",
+        layoverAfter: "",
         terminal: "",
         gate: "",
         boardingTime: ""
@@ -587,6 +589,7 @@ function flightForm(data) {
             ${arrayField("Flight Number", "segments", index, "flightNumber", segment.flightNumber)}
             ${arrayField("Cabin / Class", "segments", index, "class", segment.class)}
             ${arrayField("Duration", "segments", index, "duration", segment.duration)}
+            ${index < data.segments.length - 1 ? arrayField("Transit Stop After This Flight", "segments", index, "layoverAfter", segment.layoverAfter) : ""}
             ${arrayField("Departure Airport", "segments", index, "departureAirport", segment.departureAirport)}
             ${arrayField("Departure City", "segments", index, "departureCity", segment.departureCity)}
             ${arrayField("Departure Date", "segments", index, "departureDate", segment.departureDate)}

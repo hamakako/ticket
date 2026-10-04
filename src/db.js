@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
+const { enrichFlightTimings } = require("./flight-timings");
 
 let db;
 
@@ -54,6 +55,7 @@ function initDatabase() {
       arrival_date TEXT NOT NULL,
       arrival_time TEXT NOT NULL,
       duration TEXT NOT NULL,
+      layover_after TEXT NOT NULL DEFAULT 'Not specified',
       terminal TEXT NOT NULL DEFAULT 'Not specified',
       gate TEXT NOT NULL DEFAULT 'Not specified',
       boarding_time TEXT NOT NULL DEFAULT 'Not specified',
@@ -112,6 +114,7 @@ function initDatabase() {
   ensureColumn("flight_segments", "terminal", "TEXT NOT NULL DEFAULT 'Not specified'");
   ensureColumn("flight_segments", "gate", "TEXT NOT NULL DEFAULT 'Not specified'");
   ensureColumn("flight_segments", "boarding_time", "TEXT NOT NULL DEFAULT 'Not specified'");
+  ensureColumn("flight_segments", "layover_after", "TEXT NOT NULL DEFAULT 'Not specified'");
   ensureColumn("hotel_itineraries", "place_id", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("hotel_itineraries", "map_url", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("hotel_itineraries", "maps_title", "TEXT NOT NULL DEFAULT ''");
@@ -173,14 +176,14 @@ function mapFlight(row) {
       SELECT airline, flight_number AS flightNumber, class, departure_airport AS departureAirport,
         departure_city AS departureCity, departure_date AS departureDate, departure_time AS departureTime,
         arrival_airport AS arrivalAirport, arrival_city AS arrivalCity, arrival_date AS arrivalDate,
-        arrival_time AS arrivalTime, duration, terminal, gate, boarding_time AS boardingTime
+        arrival_time AS arrivalTime, duration, layover_after AS layoverAfter, terminal, gate, boarding_time AS boardingTime
       FROM flight_segments
       WHERE flight_itinerary_id = ?
       ORDER BY id
     `)
     .all(row.id);
 
-  return {
+  return enrichFlightTimings({
     id: row.id,
     type: "flight",
     pnr: row.pnr,
@@ -197,7 +200,7 @@ function mapFlight(row) {
     boardingPass: latestGeneratedFile("flight", row.id, "boarding-pass-html"),
     createdAt: row.created_at,
     updatedAt: row.updated_at
-  };
+  });
 }
 
 function mapHotel(row) {
@@ -259,9 +262,9 @@ function insertFlightChildren(id, data) {
     INSERT INTO flight_segments (
       flight_itinerary_id, airline, flight_number, class, departure_airport, departure_city,
       departure_date, departure_time, arrival_airport, arrival_city, arrival_date, arrival_time, duration,
-      terminal, gate, boarding_time
+      layover_after, terminal, gate, boarding_time
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   data.segments.forEach((segment) => {
     segmentStmt.run(
@@ -278,6 +281,7 @@ function insertFlightChildren(id, data) {
       segment.arrivalDate,
       segment.arrivalTime,
       segment.duration,
+      segment.layoverAfter,
       segment.terminal,
       segment.gate,
       segment.boardingTime

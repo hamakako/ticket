@@ -141,6 +141,8 @@ function renderEditor() {
           <div><span>Route</span><strong>${displayValue(segment.departureAirport)} → ${displayValue(segment.arrivalAirport)}</strong></div>
           <div><span>Departure time</span><strong>${displayValue(segment.departureTime)}</strong></div>
           <div><span>Arrival time</span><strong>${displayValue(segment.arrivalTime)}</strong></div>
+          <div><span>Flight duration</span><strong>${displayValue(segment.duration)}</strong></div>
+          ${index < segments.length - 1 ? `<div><span>Transit after flight</span><strong>${displayValue(segment.layoverAfter)}</strong></div>` : ""}
         </div>
       `).join("")}
       <div class="ticket-edit-summary-grid">
@@ -165,12 +167,16 @@ function renderEditor() {
   });
   editor.querySelectorAll("[data-edit-departure-date]").forEach((input) => {
     input.addEventListener("input", (event) => {
-      state.data.segments[Number(input.dataset.editDepartureDate)].departureDate = event.target.value;
+      const segmentIndex = Number(input.dataset.editDepartureDate);
+      state.data.segments[segmentIndex].departureDate = event.target.value;
+      if (segmentIndex > 0) state.data.segments[segmentIndex - 1].layoverAfter = "";
     });
   });
   editor.querySelectorAll("[data-edit-arrival-date]").forEach((input) => {
     input.addEventListener("input", (event) => {
-      state.data.segments[Number(input.dataset.editArrivalDate)].arrivalDate = event.target.value;
+      const segmentIndex = Number(input.dataset.editArrivalDate);
+      state.data.segments[segmentIndex].arrivalDate = event.target.value;
+      state.data.segments[segmentIndex].layoverAfter = "";
     });
   });
 
@@ -277,6 +283,7 @@ async function saveRecord() {
   const url = state.recordId ? `/api/flight-itineraries/${state.recordId}` : "/api/flight-itineraries";
   const payload = await api(url, options);
   state.recordId = payload.record.id;
+  state.data = payload.record;
 }
 
 async function generateTicket() {
@@ -307,6 +314,7 @@ async function generateTicket() {
     });
     setDownload("[data-ticket-open-pdf]", pdfPayload.generated);
     setDownload("[data-ticket-download-pdf]", pdfPayload.generated);
+    renderEditor();
     downloads.classList.remove("hidden");
     setStatus(generateStatus, "The branded HTML and A4 PDF are ready.", "ok");
   } catch (error) {

@@ -1,4 +1,5 @@
 const NOT_SPECIFIED = "Not specified";
+const { enrichFlightTimings } = require("./flight-timings");
 
 const financialPattern = /\b(price|fare|amount|total|paid|payment|invoice|receipt|fee|cost|charge|currency)\b|[$€£]|(?:USD|EUR|GBP|IQD|AED|SAR|TRY)\b/i;
 
@@ -72,13 +73,14 @@ function normalizeFlightData(input = {}) {
       arrivalDate: cleanText(segment?.arrivalDate),
       arrivalTime: cleanText(segment?.arrivalTime),
       duration: cleanText(segment?.duration),
+      layoverAfter: cleanText(segment?.layoverAfter),
       terminal: cleanText(segment?.terminal),
       gate: cleanText(segment?.gate),
       boardingTime: cleanText(segment?.boardingTime)
     }))
     .filter((segment) => Object.values(segment).some((value) => value !== NOT_SPECIFIED));
 
-  return {
+  return enrichFlightTimings({
     type: "flight",
     pnr: cleanText(input.pnr),
     passengers: passengers.length ? passengers : [{
@@ -100,6 +102,7 @@ function normalizeFlightData(input = {}) {
       arrivalDate: NOT_SPECIFIED,
       arrivalTime: NOT_SPECIFIED,
       duration: NOT_SPECIFIED,
+      layoverAfter: NOT_SPECIFIED,
       terminal: NOT_SPECIFIED,
       gate: NOT_SPECIFIED,
       boardingTime: NOT_SPECIFIED
@@ -109,7 +112,7 @@ function normalizeFlightData(input = {}) {
       cabinBaggage: cleanText(baggage.cabinBaggage)
     },
     importantNotes: normalizeNotes(input.importantNotes)
-  };
+  });
 }
 
 function normalizeHotelData(input = {}) {
