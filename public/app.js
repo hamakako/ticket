@@ -649,7 +649,7 @@ async function createSmartTrip(event) {
   syncSmartTripHotels();
   createButton.disabled = true;
   setSmartTripStatus(form.elements.sightseeingRequested.checked
-    ? "Creating the Smart Trip and its complete daily plan with Gemini Pro. This may take 1-2 minutes..."
+    ? "Creating the Smart Trip with high-quality AI reasoning and a complete daily plan. This may take 1-2 minutes..."
     : "Creating Smart Trip link...");
   try {
     const payload = await api(`/api/flight-itineraries/${smartTripState.recordId}/smart-trips`, {

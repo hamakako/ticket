@@ -127,7 +127,7 @@ updateForm.addEventListener("submit", async (event) => {
   if (!updatingTripId) return;
   const submitButton = updateForm.querySelector("[data-ticket-update-submit]");
   submitButton.disabled = true;
-  updateStatus.textContent = "Reading the new ticket and rebuilding the complete daily plan with Gemini Pro. This may take 1-2 minutes...";
+  updateStatus.textContent = "Reading the new ticket and rebuilding the complete daily plan with high-quality AI reasoning. This may take 1-2 minutes...";
   updateStatus.className = "status";
   try {
     const payload = await api(`/api/smart-trips/${updatingTripId}/update-ticket`, {

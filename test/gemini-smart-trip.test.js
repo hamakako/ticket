@@ -22,17 +22,19 @@ test("uses the standard Sorani spelling for Hoshyar", async () => {
   }
 });
 
-test("uses Gemini Pro and preserves a full ten-day Smart Trip plan", async () => {
+test("uses the high-thinking Smart Trip model and preserves a full ten-day plan", async () => {
   const originalFetch = global.fetch;
   const originalKey = process.env.GEMINI_API_KEY;
   const requestedUrls = [];
+  const requestBodies = [];
   process.env.GEMINI_API_KEY = "test-key";
   const miniPlan = Array.from({ length: 10 }, (_, index) => ({
     title: `ڕۆژی ${index + 1}`,
     items: ["چالاکی یەک", "چالاکی دوو", "چالاکی سێ"]
   }));
-  global.fetch = async (url) => {
+  global.fetch = async (url, options) => {
     requestedUrls.push(String(url));
+    requestBodies.push(JSON.parse(options.body));
     return {
       ok: true,
       json: async () => ({
@@ -51,7 +53,9 @@ test("uses Gemini Pro and preserves a full ten-day Smart Trip plan", async () =>
       startDate: "2026-10-01",
       endDate: "2026-10-10"
     });
-    assert.match(requestedUrls[0], /gemini-2\.5-pro/);
+    assert.match(requestedUrls[0], /gemini-3\.8-flash/);
+    assert.equal(requestBodies[0].generationConfig.thinkingConfig.thinkingLevel, "HIGH");
+    assert.equal("temperature" in requestBodies[0].generationConfig, false);
     assert.equal(guide.miniPlan.length, 10);
   } finally {
     global.fetch = originalFetch;

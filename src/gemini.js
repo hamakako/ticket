@@ -2,7 +2,7 @@ const fs = require("fs");
 const { normalizeFlightData, normalizeHotelData } = require("./schema");
 
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const SMART_TRIP_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash"];
+const SMART_TRIP_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
 const RETRYABLE_STATUS = new Set([404, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 45000;
 const SMART_TRIP_TIMEOUT_MS = 120000;
@@ -160,26 +160,23 @@ async function requestGeminiJson(
   temporaryMessage,
   temperature = 0,
   models = MODELS,
-  timeoutMs = REQUEST_TIMEOUT_MS
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  thinkingLevel = ""
 ) {
   assertApiKey();
-  const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts
-      }
-    ],
-    generationConfig: {
-      responseMimeType: "application/json",
-      temperature
-    }
-  };
-
   let lastError = null;
   let sawTemporaryFailure = false;
   for (const model of models) {
     try {
+      const generationConfig = { responseMimeType: "application/json" };
+      if (Number.isFinite(temperature)) generationConfig.temperature = temperature;
+      if (thinkingLevel && /^gemini-3(?:\.|-)/.test(model)) {
+        generationConfig.thinkingConfig = { thinkingLevel };
+      }
+      const requestBody = {
+        contents: [{ role: "user", parts }],
+        generationConfig
+      };
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
         headers: {
@@ -207,6 +204,8 @@ async function requestGeminiJson(
       }
       sawTemporaryFailure = true;
     }
+
+    console.error(`Gemini model ${model} failed: ${lastError}`);
 
     await wait(500);
   }
@@ -321,9 +320,10 @@ async function generateSmartTripGuide(destinationCity, destinationCountry = "", 
   const parsed = await requestGeminiJson(
     [{ text: prompt }],
     "Gemini could not create the sightseeing guide right now.",
-    0.35,
+    null,
     SMART_TRIP_MODELS,
-    SMART_TRIP_TIMEOUT_MS
+    SMART_TRIP_TIMEOUT_MS,
+    "HIGH"
   );
   const sightseeing = (Array.isArray(parsed?.sightseeing) ? parsed.sightseeing : [])
     .slice(0, 8)
