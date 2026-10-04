@@ -60,11 +60,13 @@ function renderSmartTrips(records) {
     return `<article class="smart-trip-link-card" data-smart-trip-record="${record.id}">
       <div class="smart-trip-link-main"><span>SMART TRIP</span><h3>${escapeHtml(record.passengerName)}</h3><p>${escapeHtml(destination || "Destination not specified")}</p></div>
       <div class="smart-trip-link-dates"><div><span>Plan</span><strong>${escapeHtml(record.tripDayCount)} day${record.tripDayCount === 1 ? "" : "s"}</strong></div><div><span>Expires</span><strong>${escapeHtml(displayDate(record.expiresAt))}</strong></div></div>
+      ${record.sightseeingStatus !== "ready" ? '<p class="status error">AI Guide needs another attempt.</p>' : '<p class="status ok">AI Guide ready.</p>'}
       <label>Customer link<input type="text" readonly value="${escapeHtml(absoluteUrl)}" data-link-value></label>
       <div class="inline-actions">
         <a class="small-button download-link" href="${escapeHtml(absoluteUrl)}" target="_blank" rel="noreferrer">Open</a>
         <a class="small-button download-link" href="${escapeHtml(pdfUrl)}">PDF</a>
         <button class="small-button" type="button" data-copy-smart-trip>Copy</button>
+        ${record.sightseeingStatus !== "ready" ? `<button class="secondary-button" type="button" data-retry-smart-trip="${record.id}">Retry AI Guide</button>` : ""}
         <button class="secondary-button" type="button" data-update-smart-trip="${record.id}">Replace Ticket</button>
         <button class="danger-button" type="button" data-delete-smart-trip="${record.id}">Delete</button>
       </div>
@@ -80,6 +82,20 @@ function renderSmartTrips(records) {
   });
   list.querySelectorAll("[data-update-smart-trip]").forEach((button) => {
     button.addEventListener("click", () => openUpdateDialog(Number(button.dataset.updateSmartTrip)));
+  });
+  list.querySelectorAll("[data-retry-smart-trip]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      setStatus("Building the complete AI guide and daily plan. This may take 1-3 minutes...");
+      try {
+        await api(`/api/smart-trips/${button.dataset.retrySmartTrip}/retry-guide`, { method: "POST" });
+        await loadSmartTrips();
+        setStatus("AI Guide generated successfully. The same customer link is now updated.", "ok");
+      } catch (error) {
+        button.disabled = false;
+        setStatus(error.message, "error");
+      }
+    });
   });
   list.querySelectorAll("[data-delete-smart-trip]").forEach((button) => {
     button.addEventListener("click", async () => {

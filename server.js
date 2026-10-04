@@ -468,6 +468,55 @@ app.delete("/api/smart-trips/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+app.post("/api/smart-trips/:id/retry-guide", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const trip = getSmartTripById(Number(req.params.id));
+  if (!trip) {
+    res.status(404).json({ error: "Smart Trip link not found." });
+    return;
+  }
+
+  const outboundSegments = (trip.flight?.segments || [])
+    .filter((segment) => segment.journeyDirection !== "return");
+  const arrivalDate = outboundSegments.at(-1)?.arrivalDate || trip.departureDate;
+  const tripDayCount = calculateTripDayCount(arrivalDate, trip.returnDate, trip.hotels);
+  const { guide, sightseeingStatus } = await prepareSmartTripGuide({
+    destinationCity: trip.destinationCity,
+    destinationCountry: trip.destinationCountry,
+    departureDate: trip.departureDate,
+    arrivalDate,
+    returnDate: trip.returnDate,
+    sightseeingRequested: true,
+    tripDayCount
+  }, trip.passengerName);
+
+  if (sightseeingStatus !== "ready") {
+    res.status(503).json({
+      error: "The AI guide is still temporarily unavailable. Please try Retry AI Guide again in a few minutes."
+    });
+    return;
+  }
+
+  const updated = updateSmartTrip(trip.id, {
+    ...trip,
+    passengerFirstNameKurdish: guide.passengerFirstNameKurdish || trip.passengerFirstNameKurdish,
+    sightseeingRequested: true,
+    sightseeingStatus,
+    sightseeing: guide.sightseeing,
+    travelTip: guide.travelTip,
+    miniPlan: guide.miniPlan
+  });
+  res.json({
+    smartTrip: {
+      id: updated.id,
+      url: `/smart-trip/${updated.token}`,
+      pdfUrl: `/smart-trip/${updated.token}/pdf`,
+      sightseeingStatus: updated.sightseeingStatus,
+      tripDayCount
+    }
+  });
+}));
+
 app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncRoute(async (req, res) => {
   const trip = getSmartTripById(Number(req.params.id));
   if (!trip) {

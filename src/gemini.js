@@ -2,7 +2,7 @@ const fs = require("fs");
 const { normalizeFlightData, normalizeHotelData } = require("./schema");
 
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const SMART_TRIP_MODELS = ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
+const SMART_TRIP_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
 const RETRYABLE_STATUS = new Set([404, 429, 500, 502, 503, 504]);
 const REQUEST_TIMEOUT_MS = 45000;
 const SMART_TRIP_TIMEOUT_MS = 120000;
@@ -161,51 +161,61 @@ async function requestGeminiJson(
   temperature = 0,
   models = MODELS,
   timeoutMs = REQUEST_TIMEOUT_MS,
-  thinkingLevel = ""
+  thinkingLevel = "",
+  attemptsPerModel = 1
 ) {
   assertApiKey();
   let lastError = null;
   let sawTemporaryFailure = false;
+  const maxAttempts = Math.max(1, Math.min(3, Number(attemptsPerModel) || 1));
   for (const model of models) {
-    try {
-      const generationConfig = { responseMimeType: "application/json" };
-      if (Number.isFinite(temperature)) generationConfig.temperature = temperature;
-      if (thinkingLevel && /^gemini-3(?:\.|-)/.test(model)) {
-        generationConfig.thinkingConfig = { thinkingLevel };
-      }
-      const requestBody = {
-        contents: [{ role: "user", parts }],
-        generationConfig
-      };
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY
-        },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(timeoutMs)
-      });
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      let retryCurrentModel = false;
+      try {
+        const generationConfig = { responseMimeType: "application/json" };
+        if (Number.isFinite(temperature)) generationConfig.temperature = temperature;
+        if (thinkingLevel && /^gemini-3\.(?:6|7|8)-flash$/.test(model)) {
+          generationConfig.thinkingConfig = { thinkingLevel };
+        }
+        const requestBody = {
+          contents: [{ role: "user", parts }],
+          generationConfig
+        };
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(timeoutMs)
+        });
 
-      const payload = await response.json().catch(() => ({}));
-      if (response.ok) {
-        return parseGeminiText(payload);
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) {
+          return parseGeminiText(payload);
+        }
+
+        lastError = payload?.error?.message || `Gemini request failed with HTTP ${response.status}.`;
+        if (!RETRYABLE_STATUS.has(response.status)) {
+          console.error(`Gemini model ${model} failed: ${lastError}`);
+          break;
+        }
+        sawTemporaryFailure = true;
+        retryCurrentModel = response.status >= 500;
+      } catch (error) {
+        lastError = error.message || "Gemini request failed.";
+        if (lastError.includes("API key not valid")) {
+          throw error;
+        }
+        sawTemporaryFailure = true;
+        retryCurrentModel = true;
       }
 
-      lastError = payload?.error?.message || `Gemini request failed with HTTP ${response.status}.`;
-      if (!RETRYABLE_STATUS.has(response.status)) {
-        throw new Error(lastError);
-      }
-      sawTemporaryFailure = true;
-    } catch (error) {
-      lastError = error.message || "Gemini request failed.";
-      if (lastError.includes("API key not valid")) {
-        throw error;
-      }
-      sawTemporaryFailure = true;
+      console.error(`Gemini model ${model} attempt ${attempt} failed: ${lastError}`);
+      if (!retryCurrentModel || attempt === maxAttempts) break;
+      await wait(Math.min(8000, 1500 * (2 ** (attempt - 1))));
     }
-
-    console.error(`Gemini model ${model} failed: ${lastError}`);
 
     await wait(500);
   }
@@ -323,7 +333,8 @@ async function generateSmartTripGuide(destinationCity, destinationCountry = "", 
     null,
     SMART_TRIP_MODELS,
     SMART_TRIP_TIMEOUT_MS,
-    "HIGH"
+    "HIGH",
+    2
   );
   const sightseeing = (Array.isArray(parsed?.sightseeing) ? parsed.sightseeing : [])
     .slice(0, 8)

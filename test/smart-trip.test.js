@@ -157,6 +157,6 @@ test("renders the Kurdish fallback without breaking the Smart Trip when AI is un
     miniPlan: [],
     notes: ""
   });
-  assert.match(html, /شوێنە گەشتیارییەکانی ئەم شارە دواتر زیاد دەکرێن/);
+  assert.match(html, /ڕێنمایی AI لە کاتی دروستکردندا ئامادە نەبوو/);
   assert.match(html, /Flight information/);
 });

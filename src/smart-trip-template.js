@@ -125,7 +125,7 @@ function sightseeingCards(trip) {
     return `
       <section class="section" dir="rtl" lang="ckb">
         <div class="section-heading"><span>AI GUIDE</span><h2>ڕێنمایی گەشتیاری</h2></div>
-        <div class="fallback">شوێنە گەشتیارییەکانی ئەم شارە دواتر زیاد دەکرێن.</div>
+        <div class="fallback">ڕێنمایی AI لە کاتی دروستکردندا ئامادە نەبوو. تیمی MK دەتوانێت دووبارە دروستی بکاتەوە.</div>
       </section>`;
   }
   return "";
