@@ -109,6 +109,42 @@ function initDatabase() {
       file_kind TEXT NOT NULL DEFAULT 'itinerary-html',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS smart_trips (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT NOT NULL UNIQUE,
+      flight_itinerary_id INTEGER NOT NULL,
+      passenger_name TEXT NOT NULL,
+      destination_city TEXT NOT NULL,
+      destination_country TEXT NOT NULL DEFAULT '',
+      customer_whatsapp TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      departure_date TEXT NOT NULL,
+      departure_time TEXT NOT NULL DEFAULT '',
+      return_date TEXT NOT NULL DEFAULT '',
+      flight_json TEXT NOT NULL,
+      sightseeing_requested INTEGER NOT NULL DEFAULT 1,
+      sightseeing_status TEXT NOT NULL DEFAULT 'unavailable',
+      sightseeing_json TEXT NOT NULL DEFAULT '[]',
+      travel_tip TEXT NOT NULL DEFAULT '',
+      mini_plan_json TEXT NOT NULL DEFAULT '[]',
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS smart_trip_hotels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      smart_trip_id INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      hotel_name TEXT NOT NULL,
+      hotel_city TEXT NOT NULL DEFAULT '',
+      hotel_address TEXT NOT NULL DEFAULT '',
+      check_in_date TEXT NOT NULL DEFAULT '',
+      check_out_date TEXT NOT NULL DEFAULT '',
+      hotel_phone TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      FOREIGN KEY (smart_trip_id) REFERENCES smart_trips(id) ON DELETE CASCADE
+    );
   `);
 
   ensureColumn("flight_passengers", "seat", "TEXT NOT NULL DEFAULT 'Not specified'");
@@ -544,6 +580,110 @@ function addGeneratedFile({ itineraryType, itineraryId, fileName, filePath, file
   `).run(itineraryType, itineraryId, fileName, filePath, fileKind);
 }
 
+function mapSmartTrip(row) {
+  if (!row) return null;
+  const hotels = database().prepare(`
+    SELECT hotel_name AS hotelName, hotel_city AS hotelCity, hotel_address AS hotelAddress,
+      check_in_date AS checkInDate, check_out_date AS checkOutDate,
+      hotel_phone AS hotelPhone, notes
+    FROM smart_trip_hotels
+    WHERE smart_trip_id = ?
+    ORDER BY position, check_in_date, id
+  `).all(row.id);
+
+  return {
+    id: row.id,
+    token: row.token,
+    flightItineraryId: row.flight_itinerary_id,
+    passengerName: row.passenger_name,
+    destinationCity: row.destination_city,
+    destinationCountry: row.destination_country,
+    customerWhatsapp: row.customer_whatsapp,
+    notes: row.notes,
+    departureDate: row.departure_date,
+    departureTime: row.departure_time,
+    returnDate: row.return_date,
+    flight: JSON.parse(row.flight_json || "{}"),
+    sightseeingRequested: Boolean(row.sightseeing_requested),
+    sightseeingStatus: row.sightseeing_status,
+    sightseeing: parseJsonArray(row.sightseeing_json),
+    travelTip: row.travel_tip,
+    miniPlan: parseJsonArray(row.mini_plan_json),
+    hotels,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at
+  };
+}
+
+function createSmartTrip(data) {
+  const db = database();
+  db.exec("BEGIN");
+  try {
+    const result = db.prepare(`
+      INSERT INTO smart_trips (
+        token, flight_itinerary_id, passenger_name, destination_city, destination_country,
+        customer_whatsapp, notes, departure_date, departure_time, return_date, flight_json,
+        sightseeing_requested, sightseeing_status, sightseeing_json, travel_tip,
+        mini_plan_json, expires_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      data.token,
+      data.flightItineraryId,
+      data.passengerName,
+      data.destinationCity,
+      data.destinationCountry,
+      data.customerWhatsapp,
+      data.notes,
+      data.departureDate,
+      data.departureTime,
+      data.returnDate,
+      JSON.stringify(data.flight),
+      data.sightseeingRequested ? 1 : 0,
+      data.sightseeingStatus,
+      JSON.stringify(data.sightseeing),
+      data.travelTip,
+      JSON.stringify(data.miniPlan),
+      data.expiresAt
+    );
+    const smartTripId = Number(result.lastInsertRowid);
+    const hotelStmt = db.prepare(`
+      INSERT INTO smart_trip_hotels (
+        smart_trip_id, position, hotel_name, hotel_city, hotel_address,
+        check_in_date, check_out_date, hotel_phone, notes
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    data.hotels.forEach((hotel, index) => {
+      hotelStmt.run(
+        smartTripId,
+        index,
+        hotel.hotelName,
+        hotel.hotelCity,
+        hotel.hotelAddress,
+        hotel.checkInDate,
+        hotel.checkOutDate,
+        hotel.hotelPhone,
+        hotel.notes
+      );
+    });
+    db.exec("COMMIT");
+    return mapSmartTrip(db.prepare("SELECT * FROM smart_trips WHERE id = ?").get(smartTripId));
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function getSmartTripByToken(token) {
+  return mapSmartTrip(database().prepare("SELECT * FROM smart_trips WHERE token = ?").get(token));
+}
+
+function purgeExpiredSmartTrips() {
+  const result = database().prepare("DELETE FROM smart_trips WHERE datetime(expires_at) <= datetime('now')").run();
+  return Number(result.changes || 0);
+}
+
 function purgeExpiredItineraries(retentionDays = 7) {
   const db = database();
   const cutoff = `-${Number(retentionDays) || 7} days`;
@@ -607,5 +747,8 @@ module.exports = {
   listHotelItineraries,
   deleteHotelItinerary,
   purgeExpiredItineraries,
-  addGeneratedFile
+  addGeneratedFile,
+  createSmartTrip,
+  getSmartTripByToken,
+  purgeExpiredSmartTrips
 };

@@ -1,0 +1,114 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+const {
+  calculateSmartTripExpiry,
+  deriveSmartTripPrefill,
+  hotelMapLinks,
+  normalizeSmartTripInput
+} = require("../src/smart-trip");
+const { generateSmartTripHtml } = require("../src/smart-trip-template");
+
+const itinerary = {
+  pnr: "ABC123",
+  passengers: [{ fullName: "TEST PASSENGER" }],
+  segments: [
+    { journeyDirection: "departure", airline: "Pegasus", flightNumber: "PC1", departureAirport: "EBL", departureCity: "Erbil", departureDate: "01/10/2026", departureTime: "10:00", arrivalAirport: "SAW", arrivalCity: "Istanbul", arrivalDate: "01/10/2026", arrivalTime: "12:00" },
+    { journeyDirection: "departure", airline: "Pegasus", flightNumber: "PC2", departureAirport: "SAW", departureCity: "Istanbul", departureDate: "01/10/2026", departureTime: "14:00", arrivalAirport: "TZX", arrivalCity: "Trabzon", arrivalDate: "01/10/2026", arrivalTime: "15:30" },
+    { journeyDirection: "return", airline: "Pegasus", flightNumber: "PC3", departureAirport: "TZX", departureCity: "Trabzon", departureDate: "08/10/2026", departureTime: "11:00", arrivalAirport: "EBL", arrivalCity: "Erbil", arrivalDate: "08/10/2026", arrivalTime: "13:00" }
+  ]
+};
+
+test("detects the final outbound city instead of a transit or return city", () => {
+  const prefill = deriveSmartTripPrefill(itinerary);
+  assert.equal(prefill.destinationCity, "Trabzon");
+  assert.equal(prefill.returnDate, "08/10/2026");
+  assert.equal(prefill.passengerName, "TEST PASSENGER");
+});
+
+test("uses return date plus 14 days for expiry", () => {
+  assert.equal(
+    calculateSmartTripExpiry("08/10/2026", [{ checkOutDate: "20/10/2026" }], "01/10/2026"),
+    "2026-10-22T23:59:59.000Z"
+  );
+});
+
+test("uses the latest hotel checkout when there is no return", () => {
+  assert.equal(
+    calculateSmartTripExpiry("", [{ checkOutDate: "12/10/2026" }, { checkOutDate: "20/10/2026" }], "01/10/2026"),
+    "2026-11-03T23:59:59.000Z"
+  );
+});
+
+test("uses departure plus 30 days when no return or hotel checkout exists", () => {
+  assert.equal(calculateSmartTripExpiry("", [], "01/10/2026"), "2026-10-31T23:59:59.000Z");
+});
+
+test("normalizes and sorts multiple optional hotels", () => {
+  const input = normalizeSmartTripInput({
+    destinationCity: "Istanbul",
+    hotels: [
+      { hotelName: "Second Hotel", checkInDate: "2026-10-05" },
+      { hotelName: "First Hotel", hotelCity: "", checkInDate: "2026-10-02" },
+      { hotelName: "" }
+    ]
+  });
+  assert.deepEqual(input.hotels.map((hotel) => hotel.hotelName), ["First Hotel", "Second Hotel"]);
+  assert.equal(input.hotels[0].hotelCity, "Istanbul");
+});
+
+test("creates encoded Google Maps search and direction links", () => {
+  const links = hotelMapLinks({ hotelName: "MK Hotel", hotelAddress: "Main Street", hotelCity: "Istanbul" });
+  assert.match(links.searchUrl, /google\.com\/maps\/search/);
+  assert.match(links.searchUrl, /MK%20Hotel%20Main%20Street%20Istanbul/);
+  assert.match(links.directionsUrl, /google\.com\/maps\/dir/);
+});
+
+test("renders branded flight, hotel, sightseeing, services, and countdown sections", () => {
+  const html = generateSmartTripHtml({
+    passengerName: "TEST PASSENGER",
+    destinationCity: "Trabzon",
+    destinationCountry: "Türkiye",
+    departureDate: "01/10/2026",
+    departureTime: "10:00",
+    returnDate: "08/10/2026",
+    expiresAt: "2026-10-22T23:59:59.000Z",
+    flight: { pnr: "ABC123", segments: itinerary.segments },
+    hotels: [{ hotelName: "Test Hotel", hotelCity: "Trabzon", hotelAddress: "Center", checkInDate: "2026-10-01", checkOutDate: "2026-10-08", hotelPhone: "", notes: "" }],
+    sightseeingRequested: true,
+    sightseeingStatus: "ready",
+    sightseeing: [{ name: "Atatürk Köşkü", description: "وەسفێکی کورت", mapUrl: "https://www.google.com/maps/search/?api=1&query=test" }],
+    travelTip: "تێبینی",
+    miniPlan: [{ title: "ڕۆژی یەکەم", items: ["گەشت"] }],
+    notes: ""
+  });
+  assert.match(html, /MK Business and Travel/);
+  assert.match(html, /Time until departure/);
+  assert.match(html, /Test Hotel/);
+  assert.match(html, /Direction to hotel/);
+  assert.match(html, /Atatürk Köşkü/);
+  assert.match(html, /Airport Transfer/);
+  assert.match(html, /noindex,nofollow/);
+});
+
+test("renders the Kurdish fallback without breaking the Smart Trip when AI is unavailable", () => {
+  const html = generateSmartTripHtml({
+    passengerName: "TEST PASSENGER",
+    destinationCity: "Istanbul",
+    destinationCountry: "Türkiye",
+    departureDate: "01/10/2026",
+    departureTime: "10:00",
+    returnDate: "",
+    expiresAt: "2026-10-31T23:59:59.000Z",
+    flight: { pnr: "ABC123", segments: itinerary.segments.slice(0, 1) },
+    hotels: [],
+    sightseeingRequested: true,
+    sightseeingStatus: "unavailable",
+    sightseeing: [],
+    travelTip: "",
+    miniPlan: [],
+    notes: ""
+  });
+  assert.match(html, /شوێنە گەشتیارییەکانی ئەم شارە دواتر زیاد دەکرێن/);
+  assert.match(html, /Flight information/);
+});

@@ -406,6 +406,8 @@ button:disabled {
 input[type="file"],
 input[type="search"],
 input[type="text"],
+input[type="tel"],
+input[type="date"],
 select,
 textarea {
   width: 100%;
@@ -415,6 +417,223 @@ textarea {
   color: var(--ink);
   min-height: 42px;
   padding: 9px 11px;
+}
+
+.smart-trip-dialog {
+  width: min(860px, calc(100% - 28px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(23, 12, 121, 0.2);
+  overflow: auto;
+}
+
+.smart-trip-dialog::backdrop {
+  background: rgba(23, 32, 51, 0.56);
+}
+
+.smart-trip-modal {
+  padding: 22px;
+}
+
+.smart-trip-modal-heading,
+.smart-trip-hotels-heading,
+.smart-trip-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.smart-trip-modal-heading {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.smart-trip-modal-heading h2,
+.smart-trip-hotels-heading h3 {
+  margin: 0;
+  color: var(--navy);
+}
+
+.icon-button {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--navy);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.smart-trip-detection {
+  margin: 16px 0;
+  padding: 11px 13px;
+  border-left: 4px solid var(--teal);
+  border-radius: 5px;
+  background: #eef7f8;
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.smart-trip-flight-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.smart-trip-flight-summary > div {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.smart-trip-flight-summary span,
+.smart-trip-flight-summary strong {
+  display: block;
+}
+
+.smart-trip-flight-summary span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.smart-trip-flight-summary strong {
+  margin-top: 3px;
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.smart-trip-fields textarea {
+  min-height: 82px;
+}
+
+.smart-trip-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--teal);
+  border-radius: 7px;
+  background: #f4fafb;
+  color: var(--navy);
+}
+
+.smart-trip-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.smart-trip-checkbox strong,
+.smart-trip-checkbox small {
+  display: block;
+}
+
+.smart-trip-checkbox small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.smart-trip-hotels-heading {
+  margin-top: 20px;
+}
+
+.smart-trip-hotels-heading p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.smart-trip-hotels {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.smart-trip-hotel {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfdfd;
+}
+
+.smart-trip-hotel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.smart-trip-hotel-heading strong {
+  color: var(--navy);
+}
+
+.smart-trip-hotel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.smart-trip-hotel-grid .full-span {
+  grid-column: 1 / -1;
+}
+
+.smart-trip-result {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--teal);
+  border-radius: 7px;
+  background: #f4fafb;
+}
+
+.smart-trip-result .inline-actions {
+  margin-top: 10px;
+}
+
+.smart-trip-modal-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 700px) {
+  .smart-trip-modal {
+    padding: 16px;
+  }
+
+  .smart-trip-flight-summary,
+  .smart-trip-hotel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-trip-hotel-grid .full-span {
+    grid-column: auto;
+  }
+
+  .smart-trip-hotels-heading,
+  .smart-trip-modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .smart-trip-modal-actions button,
+  .smart-trip-hotels-heading button {
+    width: 100%;
+  }
 }
 
 input[type="file"] {

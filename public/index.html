@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MK Business and Travel Itinerary Generator</title>
-  <link rel="stylesheet" href="/styles.css?v=20260930-5">
+  <link rel="stylesheet" href="/styles.css?v=20261004-smart-trip">
 </head>
 <body>
   <header class="app-header">
@@ -103,6 +103,7 @@
               <button type="button" data-generate="flight">Generate HTML Itinerary</button>
               <button type="button" data-generate-pdf="flight">Generate PDF Itinerary</button>
               <button class="secondary-button" type="button" data-generate-boarding="flight">Generate Boarding Pass</button>
+              <button class="secondary-button" type="button" data-smart-trip="flight" disabled>Make Smart Trip</button>
               <a class="download-link hidden" data-download="flight" href="#" download>Download HTML</a>
               <a class="download-link hidden" data-open="flight" href="#" target="_blank" rel="noreferrer">Open HTML</a>
               <a class="download-link hidden" data-download-pdf="flight" href="#" download>Download PDF</a>
@@ -187,6 +188,65 @@
     </section>
   </main>
 
-  <script src="/app.js"></script>
+  <dialog class="smart-trip-dialog" data-smart-trip-dialog>
+    <form class="smart-trip-modal" data-smart-trip-form>
+      <div class="smart-trip-modal-heading">
+        <div>
+          <p class="eyebrow">SMART TRIP</p>
+          <h2>Create customer trip link</h2>
+        </div>
+        <button class="icon-button" type="button" data-smart-trip-close aria-label="Close">×</button>
+      </div>
+
+      <div class="smart-trip-detection" data-smart-trip-detection>Reading the ticket and detecting the destination...</div>
+      <div class="smart-trip-flight-summary" data-smart-trip-summary></div>
+
+      <div class="form-grid smart-trip-fields">
+        <label>
+          Destination city
+          <input type="text" name="destinationCity" maxlength="120" required>
+        </label>
+        <label>
+          Destination country
+          <input type="text" name="destinationCountry" maxlength="120">
+        </label>
+        <label>
+          Customer WhatsApp number
+          <input type="tel" name="customerWhatsapp" maxlength="40" placeholder="Optional">
+        </label>
+        <label class="full-span">
+          Notes
+          <textarea name="notes" maxlength="1000" placeholder="Optional trip notes"></textarea>
+        </label>
+      </div>
+
+      <label class="smart-trip-checkbox">
+        <input type="checkbox" name="sightseeingRequested" checked>
+        <span><strong>Generate AI sightseeing guide for this destination</strong><small>Creates 5–8 places with Kurdish Sorani descriptions and Google Maps links.</small></span>
+      </label>
+
+      <div class="smart-trip-hotels-heading">
+        <div><h3>Hotels</h3><p>Optional. Add one or more hotels.</p></div>
+        <button class="secondary-button" type="button" data-add-smart-hotel>+ Add hotel</button>
+      </div>
+      <div class="smart-trip-hotels" data-smart-trip-hotels></div>
+
+      <p class="status" data-smart-trip-status></p>
+      <div class="smart-trip-result hidden" data-smart-trip-result>
+        <label>Customer link<input type="text" readonly data-smart-trip-url></label>
+        <div class="inline-actions">
+          <button class="secondary-button" type="button" data-smart-trip-copy>Copy Link</button>
+          <a class="small-button" href="#" target="_blank" rel="noreferrer" data-smart-trip-open>Open Smart Trip</a>
+        </div>
+      </div>
+
+      <div class="smart-trip-modal-actions">
+        <button class="secondary-button" type="button" data-smart-trip-cancel>Cancel</button>
+        <button type="submit" data-smart-trip-create>Create Smart Trip Link</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js?v=20261004-smart-trip"></script>
 </body>
 </html>

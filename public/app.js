@@ -55,7 +55,14 @@ const state = {
   hotel: { data: emptyHotel(), recordId: null, sourceFile: "", generated: null, generatedPdf: null, boardingPass: null, design: "modern" }
 };
 
+const smartTripState = {
+  recordId: null,
+  prefill: null,
+  hotels: []
+};
+
 document.addEventListener("DOMContentLoaded", () => {
+  bindSmartTripDialog();
   ["flight", "hotel"].forEach((type) => {
     renderForm(type);
     loadHistory(type);
@@ -71,6 +78,7 @@ function bindControls(type) {
   document.querySelector(`[data-generate-pdf="${type}"]`).addEventListener("click", () => generatePdf(type));
   if (type === "flight") {
     document.querySelector('[data-generate-boarding="flight"]').addEventListener("click", generateBoardingPass);
+    document.querySelector('[data-smart-trip="flight"]').addEventListener("click", () => openSmartTrip(state.flight.recordId));
   } else {
     document.querySelector("[data-enrich-hotel]").addEventListener("click", enrichHotel);
   }
@@ -395,6 +403,13 @@ function updateGeneratedLinks(type) {
   updateOutputLinks(type, "", state[type].generated);
   updateOutputLinks(type, "pdf", state[type].generatedPdf);
   if (type === "flight") updateOutputLinks(type, "boarding", state[type].boardingPass);
+  if (type === "flight") updateSmartTripButton();
+}
+
+function updateSmartTripButton() {
+  const button = document.querySelector('[data-smart-trip="flight"]');
+  if (!button) return;
+  button.disabled = !(state.flight.recordId && (state.flight.generated || state.flight.generatedPdf));
 }
 
 function updateOutputLinks(type, suffix, generated) {
@@ -428,6 +443,7 @@ function renderHistory(type, records) {
     const generatedUrl = record.generated?.fileName ? `/generated/${encodeURIComponent(record.generated.fileName)}` : "";
     const generatedPdfUrl = record.generatedPdf?.fileName ? `/generated-pdf/${encodeURIComponent(record.generatedPdf.fileName)}` : "";
     const boardingPassUrl = record.boardingPass?.fileName ? `/generated/${encodeURIComponent(record.boardingPass.fileName)}` : "";
+    const canMakeSmartTrip = Boolean(generatedUrl || generatedPdfUrl);
     return `
       <div class="history-item">
         <strong>${escapeHtml(title)}</strong>
@@ -439,6 +455,7 @@ function renderHistory(type, records) {
           ${generatedUrl ? `<a class="small-button download-link" href="${generatedUrl}" download="${escapeHtml(record.generated.fileName)}">Download</a>` : ""}
           ${generatedPdfUrl ? `<a class="small-button download-link" href="${generatedPdfUrl}" target="_blank" rel="noreferrer">PDF</a>` : ""}
           ${boardingPassUrl ? `<a class="small-button download-link" href="${boardingPassUrl}" target="_blank" rel="noreferrer">Boarding Pass</a>` : ""}
+          ${type === "flight" && canMakeSmartTrip ? `<button class="small-button" type="button" data-make-smart-trip="${record.id}">Make Smart Trip</button>` : ""}
           <button class="danger-button" type="button" data-delete-record="${type}:${record.id}">Delete</button>
         </div>
       </div>
@@ -463,6 +480,161 @@ function renderHistory(type, records) {
       generateExisting(recordType, Number(id));
     });
   });
+  list.querySelectorAll("[data-make-smart-trip]").forEach((button) => {
+    button.addEventListener("click", () => openSmartTrip(Number(button.dataset.makeSmartTrip)));
+  });
+}
+
+function bindSmartTripDialog() {
+  const dialog = document.querySelector("[data-smart-trip-dialog]");
+  const form = document.querySelector("[data-smart-trip-form]");
+  document.querySelector("[data-smart-trip-close]").addEventListener("click", () => dialog.close());
+  document.querySelector("[data-smart-trip-cancel]").addEventListener("click", () => dialog.close());
+  document.querySelector("[data-add-smart-hotel]").addEventListener("click", () => {
+    syncSmartTripHotels();
+    smartTripState.hotels.push({
+      hotelName: "",
+      hotelCity: smartTripState.prefill?.destinationCity || "",
+      hotelAddress: "",
+      checkInDate: "",
+      checkOutDate: "",
+      hotelPhone: "",
+      notes: ""
+    });
+    renderSmartTripHotels();
+  });
+  document.querySelector("[data-smart-trip-copy]").addEventListener("click", async () => {
+    const input = document.querySelector("[data-smart-trip-url]");
+    await navigator.clipboard.writeText(input.value);
+    setSmartTripStatus("Smart Trip link copied.", "ok");
+  });
+  form.addEventListener("submit", createSmartTrip);
+}
+
+function setSmartTripStatus(message = "", tone = "") {
+  const node = document.querySelector("[data-smart-trip-status]");
+  node.textContent = message;
+  node.className = `status ${tone}`.trim();
+}
+
+async function openSmartTrip(recordId) {
+  if (!recordId) {
+    setStatus("flight", "Generate the ticket before making a Smart Trip.", "error");
+    return;
+  }
+  const dialog = document.querySelector("[data-smart-trip-dialog]");
+  const form = document.querySelector("[data-smart-trip-form]");
+  smartTripState.recordId = recordId;
+  smartTripState.prefill = null;
+  smartTripState.hotels = [];
+  form.reset();
+  form.elements.sightseeingRequested.checked = true;
+  document.querySelector("[data-smart-trip-result]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-summary]").innerHTML = "";
+  document.querySelector("[data-smart-trip-detection]").textContent = "Reading the ticket and detecting the destination...";
+  document.querySelector("[data-smart-trip-create]").disabled = true;
+  renderSmartTripHotels();
+  setSmartTripStatus("");
+  dialog.showModal();
+
+  try {
+    const payload = await api(`/api/flight-itineraries/${recordId}/smart-trip-preview`);
+    smartTripState.prefill = payload.prefill;
+    form.elements.destinationCity.value = payload.prefill.destinationCity || "";
+    form.elements.destinationCountry.value = payload.prefill.destinationCountry || "";
+    document.querySelector("[data-smart-trip-detection]").textContent = payload.detection.message;
+    renderSmartTripSummary(payload.prefill);
+    document.querySelector("[data-smart-trip-create]").disabled = false;
+  } catch (error) {
+    document.querySelector("[data-smart-trip-detection]").textContent = "Destination detection could not be completed.";
+    setSmartTripStatus(error.message, "error");
+  }
+}
+
+function renderSmartTripSummary(prefill) {
+  const items = [
+    ["Passenger", prefill.passengerName],
+    ["PNR", prefill.pnr],
+    ["Airline / Flight", `${prefill.airline || ""} ${prefill.flightNumber || ""}`.trim()],
+    ["Route", `${prefill.departureCity || prefill.departureAirport || ""} → ${prefill.arrivalCity || prefill.arrivalAirport || ""}`],
+    ["Departure", `${prefill.departureDate || ""} ${prefill.departureTime || ""}`.trim()],
+    ["Arrival", `${prefill.arrivalDate || ""} ${prefill.arrivalTime || ""}`.trim()],
+    ["Return", prefill.returnDate || "One way"]
+  ];
+  document.querySelector("[data-smart-trip-summary]").innerHTML = items.map(([label, value]) => `
+    <div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "Not specified")}</strong></div>
+  `).join("");
+}
+
+function renderSmartTripHotels() {
+  const root = document.querySelector("[data-smart-trip-hotels]");
+  root.innerHTML = smartTripState.hotels.map((hotel, index) => `
+    <div class="smart-trip-hotel" data-smart-hotel="${index}">
+      <div class="smart-trip-hotel-heading"><strong>Hotel ${index + 1}</strong><button class="danger-button" type="button" data-remove-smart-hotel="${index}">Remove</button></div>
+      <div class="smart-trip-hotel-grid">
+        <label>Hotel name<input type="text" maxlength="160" data-smart-hotel-field="hotelName" value="${escapeAttribute(hotel.hotelName)}" required></label>
+        <label>Hotel city<input type="text" maxlength="120" data-smart-hotel-field="hotelCity" value="${escapeAttribute(hotel.hotelCity)}"></label>
+        <label class="full-span">Hotel address, optional<input type="text" maxlength="300" data-smart-hotel-field="hotelAddress" value="${escapeAttribute(hotel.hotelAddress)}"></label>
+        <label>Check-in date<input type="date" data-smart-hotel-field="checkInDate" value="${escapeAttribute(hotel.checkInDate)}"></label>
+        <label>Check-out date<input type="date" data-smart-hotel-field="checkOutDate" value="${escapeAttribute(hotel.checkOutDate)}"></label>
+        <label>Hotel phone, optional<input type="tel" maxlength="80" data-smart-hotel-field="hotelPhone" value="${escapeAttribute(hotel.hotelPhone)}"></label>
+        <label class="full-span">Notes, optional<textarea maxlength="500" data-smart-hotel-field="notes">${escapeHtml(hotel.notes)}</textarea></label>
+      </div>
+    </div>
+  `).join("");
+  root.querySelectorAll("[data-remove-smart-hotel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      syncSmartTripHotels();
+      smartTripState.hotels.splice(Number(button.dataset.removeSmartHotel), 1);
+      renderSmartTripHotels();
+    });
+  });
+  const addButton = document.querySelector("[data-add-smart-hotel]");
+  addButton.textContent = smartTripState.hotels.length ? "+ Add another hotel" : "+ Add hotel";
+}
+
+function syncSmartTripHotels() {
+  document.querySelectorAll("[data-smart-hotel]").forEach((card) => {
+    const hotel = smartTripState.hotels[Number(card.dataset.smartHotel)];
+    card.querySelectorAll("[data-smart-hotel-field]").forEach((input) => {
+      hotel[input.dataset.smartHotelField] = input.value;
+    });
+  });
+}
+
+async function createSmartTrip(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const createButton = document.querySelector("[data-smart-trip-create]");
+  syncSmartTripHotels();
+  createButton.disabled = true;
+  setSmartTripStatus(form.elements.sightseeingRequested.checked
+    ? "Creating Smart Trip and generating the AI sightseeing guide..."
+    : "Creating Smart Trip link...");
+  try {
+    const payload = await api(`/api/flight-itineraries/${smartTripState.recordId}/smart-trips`, {
+      method: "POST",
+      body: JSON.stringify({
+        destinationCity: form.elements.destinationCity.value,
+        destinationCountry: form.elements.destinationCountry.value,
+        customerWhatsapp: form.elements.customerWhatsapp.value,
+        notes: form.elements.notes.value,
+        sightseeingRequested: form.elements.sightseeingRequested.checked,
+        hotels: smartTripState.hotels
+      })
+    });
+    const absoluteUrl = new URL(payload.smartTrip.url, window.location.origin).toString();
+    document.querySelector("[data-smart-trip-url]").value = absoluteUrl;
+    document.querySelector("[data-smart-trip-open]").href = absoluteUrl;
+    document.querySelector("[data-smart-trip-result]").classList.remove("hidden");
+    setSmartTripStatus(payload.smartTrip.sightseeingStatus === "unavailable"
+      ? "Smart Trip created. AI sightseeing was unavailable, so the fallback message is shown."
+      : "Smart Trip link created successfully.", "ok");
+  } catch (error) {
+    setSmartTripStatus(error.message, "error");
+  } finally {
+    createButton.disabled = false;
+  }
 }
 
 function renderForm(type) {
