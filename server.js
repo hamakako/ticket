@@ -49,6 +49,7 @@ const {
   normalizeSmartTripInput
 } = require("./src/smart-trip");
 const { generateSmartTripHtml, generateUnavailableSmartTripHtml } = require("./src/smart-trip-template");
+const { fallbackSmartTripGuide } = require("./src/smart-trip-fallback");
 const {
   generateFlightHtml,
   generateFlightProposalHtml,
@@ -153,10 +154,20 @@ async function prepareSmartTripGuide(input, passengerName) {
           [input.destinationCity, input.destinationCountry].filter(Boolean).join(" ")
         );
       } else {
-        guide = { ...guide, sightseeing: [], travelTip: "", miniPlan: [] };
+        throw new Error("Gemini returned an incomplete Smart Trip guide.");
       }
     } catch (error) {
       console.error(`Smart Trip sightseeing unavailable: ${error.message}`);
+      guide = fallbackSmartTripGuide(input.destinationCity, input.destinationCountry, {
+        dayCount: input.tripDayCount,
+        startDate: input.arrivalDate || input.departureDate,
+        endDate: input.returnDate
+      });
+      sightseeingStatus = "ready";
+      guide.sightseeing = await enrichSightseeingImages(
+        guide.sightseeing,
+        [input.destinationCity, input.destinationCountry].filter(Boolean).join(" ")
+      );
     }
   }
 
