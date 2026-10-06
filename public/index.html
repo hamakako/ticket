@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MK Business and Travel Itinerary Generator</title>
-  <link rel="stylesheet" href="/styles.css?v=20261004-smart-trip-manager">
+  <link rel="stylesheet" href="/styles.css?v=20261006-multilingual-first-name">
 </head>
 <body>
   <header class="app-header">
@@ -204,8 +204,9 @@
 
       <div class="form-grid smart-trip-fields">
         <label>
-          Passenger first name (English)
-          <input type="text" name="passengerFirstName" maxlength="60" pattern="[A-Za-zÀ-ÖØ-öø-ÿ' -]+" required>
+          Passenger first name
+          <input type="text" name="passengerFirstName" maxlength="60" required>
+          <small class="field-hint">Detected from the ticket in English. You can change it to any language.</small>
         </label>
         <label>
           Destination city
@@ -258,6 +259,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=20261006-flight-hotel-qr"></script>
+  <script src="/app.js?v=20261006-multilingual-first-name"></script>
 </body>
 </html>

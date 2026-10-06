@@ -12,19 +12,21 @@ function limitedText(value, maxLength = 200) {
   return meaningful(value).slice(0, maxLength);
 }
 
-function passengerFirstNameEnglish(value, passengerName = "") {
+function normalizePassengerFirstName(value, passengerName = "") {
   const requested = String(value || "").replace(/\s+/g, " ").trim().slice(0, 60);
-  if (requested && !/^[\p{Script=Latin}\p{M}' -]+$/u.test(requested)) {
-    throw new Error("Please enter the passenger first name using English letters.");
+  if (requested && !/^[\p{L}\p{M}'’ .-]+$/u.test(requested)) {
+    throw new Error("The passenger first name may contain letters, spaces, apostrophes, periods, or hyphens.");
   }
   if (requested) return requested;
 
   const titles = /^(mr|mrs|ms|miss|dr)\.?$/i;
-  const firstName = String(passengerName || "")
+  const nameParts = String(passengerName || "")
     .replace(/\s+/g, " ")
     .trim()
     .split(" ")
-    .find((part) => !titles.test(part) && /^[\p{Script=Latin}\p{M}'-]+$/u.test(part));
+    .map((part) => part.replace(/^[^\p{L}]+|[^\p{L}\p{M}'’-]+$/gu, ""))
+    .filter(Boolean);
+  const firstName = nameParts.find((part) => !titles.test(part) && /^[\p{Script=Latin}\p{M}'’-]+$/u.test(part));
   return firstName || "Traveler";
 }
 
@@ -106,7 +108,7 @@ function deriveSmartTripPrefill(itinerary = {}) {
   const passengerName = meaningful(itinerary.passengers?.[0]?.fullName);
   return {
     passengerName,
-    passengerFirstName: passengerFirstNameEnglish("", passengerName),
+    passengerFirstName: normalizePassengerFirstName("", passengerName),
     destinationCity: meaningful(destinationSegment.arrivalCity) || meaningful(destinationSegment.arrivalAirport),
     destinationCountry: "",
     airline: meaningful(firstSegment.airline),
@@ -166,7 +168,7 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
   const hotels = normalizeHotels(value.hotels, destinationCity, departureTimestamp);
 
   return {
-    passengerFirstName: passengerFirstNameEnglish(value.passengerFirstName, prefill.passengerName),
+    passengerFirstName: normalizePassengerFirstName(value.passengerFirstName, prefill.passengerName),
     destinationCity,
     destinationCountry: limitedText(value.destinationCountry || prefill.destinationCountry, 120),
     customerWhatsapp: whatsapp,
@@ -250,6 +252,6 @@ module.exports = {
   deriveSmartTripPrefill,
   flightSnapshot,
   hotelMapLinks,
-  normalizeSmartTripInput,
-  passengerFirstNameEnglish
+  normalizePassengerFirstName,
+  normalizeSmartTripInput
 };

@@ -518,6 +518,13 @@ textarea {
   min-height: 82px;
 }
 
+.smart-trip-fields .field-hint {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 .smart-trip-checkbox {
   display: flex;
   align-items: flex-start;

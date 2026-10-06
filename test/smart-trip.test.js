@@ -39,13 +39,22 @@ test("uses a reviewed English first name for the Smart Trip greeting", () => {
     arrivalDate: "2026-10-10"
   });
   assert.equal(input.passengerFirstName, "Hoshyar");
-  assert.throws(() => normalizeSmartTripInput({
+  const kurdishInput = normalizeSmartTripInput({
     passengerFirstName: "هۆشیار",
     destinationCity: "Istanbul"
   }, {
     passengerName: "MR HOSHYAR ABDULRAZZAQ",
     departureDate: "2026-10-10"
-  }), /English letters/);
+  });
+  assert.equal(kurdishInput.passengerFirstName, "هۆشیار");
+});
+
+test("cleans ticket punctuation before choosing the automatic English first name", () => {
+  const prefill = deriveSmartTripPrefill({
+    passengers: [{ fullName: "SHAWNM. ABDULLAH QADIR QADIR" }],
+    segments: itinerary.segments
+  });
+  assert.equal(prefill.passengerFirstName, "SHAWNM");
 });
 
 test("keeps complete ticket details in the Smart Trip flight snapshot", () => {
