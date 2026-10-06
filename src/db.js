@@ -116,6 +116,7 @@ function initDatabase() {
       flight_itinerary_id INTEGER NOT NULL,
       passenger_name TEXT NOT NULL,
       passenger_first_name_kurdish TEXT NOT NULL DEFAULT '',
+      passenger_first_name_english TEXT NOT NULL DEFAULT '',
       destination_city TEXT NOT NULL,
       destination_country TEXT NOT NULL DEFAULT '',
       customer_whatsapp TEXT NOT NULL DEFAULT '',
@@ -165,6 +166,7 @@ function initDatabase() {
   ensureColumn("hotel_itineraries", "photo_attribution_url", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("generated_files", "file_kind", "TEXT NOT NULL DEFAULT 'itinerary-html'");
   ensureColumn("smart_trips", "passenger_first_name_kurdish", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("smart_trips", "passenger_first_name_english", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("smart_trips", "ticket_design", "TEXT NOT NULL DEFAULT 'modern'");
 
   return db;
@@ -601,6 +603,7 @@ function mapSmartTrip(row) {
     flightItineraryId: row.flight_itinerary_id,
     passengerName: row.passenger_name,
     passengerFirstNameKurdish: row.passenger_first_name_kurdish,
+    passengerFirstNameEnglish: row.passenger_first_name_english,
     destinationCity: row.destination_city,
     destinationCountry: row.destination_country,
     customerWhatsapp: row.customer_whatsapp,
@@ -627,17 +630,18 @@ function createSmartTrip(data) {
   try {
     const result = db.prepare(`
       INSERT INTO smart_trips (
-        token, flight_itinerary_id, passenger_name, passenger_first_name_kurdish, destination_city, destination_country,
+        token, flight_itinerary_id, passenger_name, passenger_first_name_kurdish, passenger_first_name_english, destination_city, destination_country,
         customer_whatsapp, notes, departure_date, departure_time, return_date, ticket_design, flight_json,
         sightseeing_requested, sightseeing_status, sightseeing_json, travel_tip,
         mini_plan_json, expires_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.token,
       data.flightItineraryId,
       data.passengerName,
       data.passengerFirstNameKurdish,
+      data.passengerFirstNameEnglish || "",
       data.destinationCity,
       data.destinationCountry,
       data.customerWhatsapp,
@@ -697,7 +701,7 @@ function updateSmartTrip(id, data) {
   try {
     const result = db.prepare(`
       UPDATE smart_trips SET
-        passenger_name = ?, passenger_first_name_kurdish = ?, destination_city = ?, destination_country = ?,
+        passenger_name = ?, passenger_first_name_kurdish = ?, passenger_first_name_english = ?, destination_city = ?, destination_country = ?,
         customer_whatsapp = ?, notes = ?, departure_date = ?, departure_time = ?, return_date = ?,
         ticket_design = ?, flight_json = ?, sightseeing_requested = ?, sightseeing_status = ?, sightseeing_json = ?,
         travel_tip = ?, mini_plan_json = ?, expires_at = ?
@@ -705,6 +709,7 @@ function updateSmartTrip(id, data) {
     `).run(
       data.passengerName,
       data.passengerFirstNameKurdish,
+      data.passengerFirstNameEnglish || "",
       data.destinationCity,
       data.destinationCountry,
       data.customerWhatsapp,

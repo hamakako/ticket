@@ -27,10 +27,10 @@ function publicUrl(filePath, baseUrl = "") {
 }
 
 function passengerFirstName(trip) {
-  if (String(trip.passengerFirstNameKurdish || "").trim()) return trip.passengerFirstNameKurdish.trim();
+  if (String(trip.passengerFirstNameEnglish || "").trim()) return trip.passengerFirstNameEnglish.trim();
   const parts = String(trip.passengerName || "").trim().split(/\s+/).filter(Boolean);
   const titles = /^(mr|mrs|ms|miss|dr)\.?$/i;
-  return parts.find((part) => !titles.test(part)) || parts[0] || "گەشتیار";
+  return parts.find((part) => !titles.test(part) && /^[\p{Script=Latin}\p{M}'-]+$/u.test(part)) || "Traveler";
 }
 
 function countdownTimestamp(dateValue, timeValue) {

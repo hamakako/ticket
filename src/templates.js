@@ -74,6 +74,60 @@ function smartTripAccess(smartTrip = {}) {
   `;
 }
 
+function smartTripHotelPages(data = {}) {
+  const hotels = Array.isArray(data.smartTripHotels) ? data.smartTripHotels : [];
+  if (!hotels.length) return "";
+  const passengerNames = (data.passengers || []).map((passenger) => passenger.fullName).filter(Boolean).join(", ");
+
+  return hotels.map((hotel, index) => {
+    const mapQuery = [hotel.hotelName, hotel.hotelAddress, hotel.hotelCity].filter(Boolean).join(" ");
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+    return `
+  <section class="page smart-trip-hotel-page">
+    <div class="content">
+      ${brandHeader("Flight & Hotel Voucher", `English · Hotel ${index + 1} of ${hotels.length}`)}
+      <div class="hero smart-trip-hero">
+        <div class="summary-card">
+          <h3>PNR / Booking Reference</h3>
+          <div class="reference">${display(data.pnr)}</div>
+          <p class="muted"><strong>Passenger:</strong> ${display(passengerNames)}</p>
+        </div>
+        ${smartTripAccess(data.smartTrip)}
+      </div>
+
+      <div class="section hotel-voucher-heading">
+        <span class="label">Hotel ${index + 1} of ${hotels.length}</span>
+        <h3>${display(hotel.hotelName)}</h3>
+        <p>${display([hotel.hotelAddress, hotel.hotelCity].filter(Boolean).join(", "))}</p>
+      </div>
+
+      <div class="section grid-2">
+        <div class="soft-card">
+          <div class="label">Check-in</div>
+          <strong>${display(hotel.checkInDate)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Check-out</div>
+          <strong>${display(hotel.checkOutDate)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Hotel Phone</div>
+          <strong>${display(hotel.hotelPhone)}</strong>
+        </div>
+        <div class="soft-card">
+          <div class="label">Destination</div>
+          <strong>${display(hotel.hotelCity || data.smartTripDestination)}</strong>
+        </div>
+      </div>
+
+      ${hotel.notes ? `<div class="section soft-card"><div class="label">Hotel Notes</div><p>${display(hotel.notes)}</p></div>` : ""}
+      ${mapQuery ? `<div class="section"><a class="maps-link" href="${escapeHtml(mapUrl)}" target="_blank" rel="noreferrer">Open Hotel in Google Maps</a></div>` : ""}
+    </div>
+    ${footer()}
+  </section>`;
+  }).join("");
+}
+
 function airlineIdentity(segment = {}, fallbackName = "") {
   const airline = meaningful(segment.airline) || meaningful(fallbackName) || "Airline";
   const logo = meaningful(segment.airlineLogo);
@@ -291,6 +345,20 @@ function sharedStyles() {
       font-size: 9.5px;
       font-weight: 800;
       text-decoration: none;
+    }
+    .hotel-voucher-heading {
+      padding: 5mm;
+      border-left: 4px solid var(--teal);
+      border-radius: 7px;
+      background: #f4fafb;
+    }
+    .hotel-voucher-heading h3 {
+      margin: 1.5mm 0 1mm;
+      font-size: 23px;
+    }
+    .hotel-voucher-heading p {
+      margin: 0;
+      color: var(--muted);
     }
     .summary-card,
     .soft-card {
@@ -921,18 +989,19 @@ function generateFlightProposalHtml(data, design = "modern") {
 
 function generateFlightHtml(data, design = "modern") {
   const designName = normalizeDesign(design);
+  const documentTitle = data.smartTripHotels?.length ? "Flight & Hotel Voucher" : "Flight Itinerary";
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flight Itinerary - ${display(data.pnr)}</title>
+  <title>${escapeHtml(documentTitle)} - ${display(data.pnr)}</title>
   <style>${sharedStyles()}</style>
 </head>
 <body class="design-${designName}">
   <section class="page">
     <div class="content">
-      ${brandHeader("Flight Itinerary", "English")}
+      ${brandHeader(documentTitle, "English")}
       <div class="hero${data.smartTrip ? " smart-trip-hero" : ""}">
         <div class="summary-card">
           <h3>PNR / Booking Reference</h3>
@@ -1086,6 +1155,7 @@ function generateFlightHtml(data, design = "modern") {
     </div>
     ${footer()}
   </section>
+  ${smartTripHotelPages(data)}
 </body>
 </html>`;
 }

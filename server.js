@@ -35,8 +35,7 @@ const {
   extractPassportName,
   extractSmartTripHotel,
   extractText,
-  generateSmartTripGuide,
-  transliteratePassengerFirstName
+  generateSmartTripGuide
 } = require("./src/gemini");
 const { enrichHotelData } = require("./src/hotel-enrichment");
 const { bookingLinks, getSelection, searchAirports, searchFlights } = require("./src/ignav");
@@ -162,14 +161,6 @@ async function prepareSmartTripGuide(input, passengerName) {
     }
   }
 
-  if (!guide.passengerFirstNameKurdish) {
-    try {
-      guide.passengerFirstNameKurdish = await transliteratePassengerFirstName(passengerName);
-    } catch (error) {
-      console.error(`Smart Trip Kurdish passenger name unavailable: ${error.message}`);
-    }
-  }
-
   return { guide, sightseeingStatus };
 }
 
@@ -243,15 +234,17 @@ async function savePdfFile(type, itinerary, design = "modern", options = {}) {
   };
 }
 
-async function saveSmartTripTicketFiles(req, trip) {
+async function saveSmartTripTicketFiles(req, trip, options = {}) {
+  const includeHotels = options.includeHotels === true;
   const storedRecord = getFlightItinerary(trip.flightItineraryId);
-  if (!storedRecord) {
+  const snapshot = trip.flight || {};
+  if (!storedRecord && !snapshot.passengers?.length) {
     throw Object.assign(new Error("The original flight record has expired. Upload the current ticket again before generating a QR ticket."), { status: 410 });
   }
-  const snapshot = trip.flight || {};
   const itinerary = snapshot.passengers?.length ? {
-    ...storedRecord,
-    pnr: snapshot.pnr || storedRecord.pnr,
+    ...(storedRecord || {}),
+    id: trip.flightItineraryId,
+    pnr: snapshot.pnr || storedRecord?.pnr,
     passengers: snapshot.passengers,
     segments: snapshot.segments || [],
     baggage: snapshot.baggage || {},
@@ -266,18 +259,22 @@ async function saveSmartTripTicketFiles(req, trip) {
   });
   const ticket = await withAirlineLogos({
     ...itinerary,
-    smartTrip: { url: smartTripUrl, qrDataUri }
+    smartTrip: { url: smartTripUrl, qrDataUri },
+    smartTripHotels: includeHotels ? trip.hotels : [],
+    smartTripDestination: [trip.destinationCity, trip.destinationCountry].filter(Boolean).join(", ")
   });
   const design = normalizeTicketDesign(trip.ticketDesign);
+  const fileSuffix = includeHotels ? "Smart_Trip_Flight_Hotel" : "Smart_Trip";
+  const fileKindPrefix = includeHotels ? "smart-trip-combined" : "smart-trip-ticket";
   const html = saveHtmlFile("flight", ticket, design, {
-    fileSuffix: "Smart_Trip",
-    fileKind: "smart-trip-ticket-html"
+    fileSuffix,
+    fileKind: `${fileKindPrefix}-html`
   });
   const pdf = await savePdfFile("flight", ticket, design, {
-    fileSuffix: "Smart_Trip",
-    fileKind: "smart-trip-ticket-pdf"
+    fileSuffix,
+    fileKind: `${fileKindPrefix}-pdf`
   });
-  return { html, pdf, smartTripUrl, design };
+  return { html, pdf, smartTripUrl, design, hotelCount: includeHotels ? trip.hotels.length : 0 };
 }
 
 function proposalReference() {
@@ -498,6 +495,7 @@ app.get("/api/smart-trips", (_req, res) => {
   const records = listSmartTrips().map((trip) => ({
     id: trip.id,
     passengerName: trip.passengerName,
+    passengerFirstNameEnglish: trip.passengerFirstNameEnglish,
     destinationCity: trip.destinationCity,
     destinationCountry: trip.destinationCountry,
     url: `/smart-trip/${trip.token}`,
@@ -510,7 +508,8 @@ app.get("/api/smart-trips", (_req, res) => {
     createdAt: trip.createdAt,
     expiresAt: trip.expiresAt,
     sightseeingStatus: trip.sightseeingStatus,
-    ticketDesign: trip.ticketDesign
+    ticketDesign: trip.ticketDesign,
+    hotelCount: trip.hotels.length
   }));
   res.json({ records });
 });
@@ -556,6 +555,7 @@ app.post("/api/smart-trips/:id/retry-guide", asyncRoute(async (req, res) => {
   const updated = updateSmartTrip(trip.id, {
     ...trip,
     passengerFirstNameKurdish: guide.passengerFirstNameKurdish || trip.passengerFirstNameKurdish,
+    passengerFirstNameEnglish: trip.passengerFirstNameEnglish,
     sightseeingRequested: true,
     sightseeingStatus,
     sightseeing: guide.sightseeing,
@@ -587,6 +587,29 @@ app.post("/api/smart-trips/:id/ticket", asyncRoute(async (req, res) => {
       pdf: generated.pdf,
       smartTripUrl: generated.smartTripUrl,
       design: generated.design
+    }
+  });
+}));
+
+app.post("/api/smart-trips/:id/ticket-hotel", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const trip = getSmartTripById(Number(req.params.id));
+  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
+    res.status(404).json({ error: "Smart Trip link not found or expired." });
+    return;
+  }
+  if (!trip.hotels.length) {
+    res.status(400).json({ error: "Add a hotel to the Smart Trip before generating the combined flight and hotel voucher." });
+    return;
+  }
+  const generated = await saveSmartTripTicketFiles(req, trip, { includeHotels: true });
+  res.json({
+    generated: {
+      html: generated.html,
+      pdf: generated.pdf,
+      smartTripUrl: generated.smartTripUrl,
+      design: generated.design,
+      hotelCount: generated.hotelCount
     }
   });
 }));
@@ -634,6 +657,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
     const updated = updateSmartTrip(trip.id, {
       passengerName,
       passengerFirstNameKurdish: guide.passengerFirstNameKurdish,
+      passengerFirstNameEnglish: trip.passengerFirstNameEnglish,
       destinationCity: input.destinationCity,
       destinationCountry: input.destinationCountry,
       customerWhatsapp: trip.customerWhatsapp,
@@ -906,6 +930,7 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     flightItineraryId: record.id,
     passengerName: prefill.passengerName,
     passengerFirstNameKurdish: guide.passengerFirstNameKurdish,
+    passengerFirstNameEnglish: input.passengerFirstName,
     destinationCity: input.destinationCity,
     destinationCountry: input.destinationCountry,
     customerWhatsapp: input.customerWhatsapp,
@@ -929,7 +954,9 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
       url: `/smart-trip/${trip.token}`,
       expiresAt: trip.expiresAt,
       sightseeingStatus: trip.sightseeingStatus,
-      ticketDesign: trip.ticketDesign
+      ticketDesign: trip.ticketDesign,
+      hotelCount: trip.hotels.length,
+      passengerFirstNameEnglish: trip.passengerFirstNameEnglish
     }
   });
 }));

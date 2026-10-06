@@ -51,3 +51,31 @@ test("adds a linked QR card only to a Smart Trip ticket", () => {
   assert.match(html, />Open Smart Trip</);
   assert.equal((html.match(/class="smart-trip-access"/g) || []).length, 1);
 });
+
+test("adds hotel vouchers to one combined Smart Trip document", () => {
+  const html = generateFlightHtml({
+    ...itinerary,
+    smartTrip: {
+      url: "https://example.com/smart-trip/customer-token",
+      qrDataUri: "data:image/png;base64,QRDATA"
+    },
+    smartTripDestination: "Istanbul, Türkiye",
+    smartTripHotels: [{
+      hotelName: "Grand Istanbul Hotel",
+      hotelCity: "Istanbul",
+      hotelAddress: "Taksim Square",
+      checkInDate: "2026-10-10",
+      checkOutDate: "2026-10-15",
+      hotelPhone: "+90 212 000 0000",
+      notes: "Breakfast included"
+    }]
+  }, "modern");
+
+  assert.match(html, /Flight &amp; Hotel Voucher/);
+  assert.match(html, /Grand Istanbul Hotel/);
+  assert.match(html, /2026-10-10/);
+  assert.match(html, /Breakfast included/);
+  assert.match(html, /Open Hotel in Google Maps/);
+  assert.equal((html.match(/class="smart-trip-access"/g) || []).length, 2);
+  assert.equal((html.match(/class="page/g) || []).length, 4);
+});

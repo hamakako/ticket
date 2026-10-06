@@ -59,6 +59,7 @@ const smartTripState = {
   recordId: null,
   smartTripId: null,
   prefill: null,
+  hotelCount: 0,
   hotels: []
 };
 
@@ -510,6 +511,7 @@ function bindSmartTripDialog() {
     setSmartTripStatus("Smart Trip link copied.", "ok");
   });
   document.querySelector("[data-smart-trip-ticket]").addEventListener("click", generateSmartTripTicket);
+  document.querySelector("[data-smart-trip-combined]").addEventListener("click", generateSmartTripCombined);
   form.addEventListener("submit", createSmartTrip);
 }
 
@@ -529,12 +531,16 @@ async function openSmartTrip(recordId) {
   smartTripState.recordId = recordId;
   smartTripState.smartTripId = null;
   smartTripState.prefill = null;
+  smartTripState.hotelCount = 0;
   smartTripState.hotels = [];
   form.reset();
   form.elements.sightseeingRequested.checked = true;
   document.querySelector("[data-smart-trip-result]").classList.add("hidden");
   document.querySelector("[data-smart-trip-ticket-html]").classList.add("hidden");
   document.querySelector("[data-smart-trip-ticket-pdf]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-combined]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-combined-html]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-combined-pdf]").classList.add("hidden");
   document.querySelector("[data-smart-trip-summary]").innerHTML = "";
   document.querySelector("[data-smart-trip-detection]").textContent = "Reading the ticket and detecting the destination...";
   document.querySelector("[data-smart-trip-create]").disabled = true;
@@ -545,6 +551,7 @@ async function openSmartTrip(recordId) {
   try {
     const payload = await api(`/api/flight-itineraries/${recordId}/smart-trip-preview`);
     smartTripState.prefill = payload.prefill;
+    form.elements.passengerFirstName.value = payload.prefill.passengerFirstName || "";
     form.elements.destinationCity.value = payload.prefill.destinationCity || "";
     form.elements.destinationCountry.value = payload.prefill.destinationCountry || "";
     document.querySelector("[data-smart-trip-detection]").textContent = payload.detection.message;
@@ -660,6 +667,7 @@ async function createSmartTrip(event) {
     const payload = await api(`/api/flight-itineraries/${smartTripState.recordId}/smart-trips`, {
       method: "POST",
       body: JSON.stringify({
+        passengerFirstName: form.elements.passengerFirstName.value,
         destinationCity: form.elements.destinationCity.value,
         destinationCountry: form.elements.destinationCountry.value,
         customerWhatsapp: form.elements.customerWhatsapp.value,
@@ -670,10 +678,12 @@ async function createSmartTrip(event) {
       })
     });
     smartTripState.smartTripId = payload.smartTrip.id;
+    smartTripState.hotelCount = payload.smartTrip.hotelCount || 0;
     const absoluteUrl = new URL(payload.smartTrip.url, window.location.origin).toString();
     document.querySelector("[data-smart-trip-url]").value = absoluteUrl;
     document.querySelector("[data-smart-trip-open]").href = absoluteUrl;
     document.querySelector("[data-smart-trip-result]").classList.remove("hidden");
+    document.querySelector("[data-smart-trip-combined]").classList.toggle("hidden", smartTripState.hotelCount === 0);
     setSmartTripStatus(payload.smartTrip.sightseeingStatus === "unavailable"
       ? "Smart Trip created. AI sightseeing was unavailable, so the fallback message is shown."
       : "Smart Trip link created successfully.", "ok");
@@ -681,6 +691,30 @@ async function createSmartTrip(event) {
     setSmartTripStatus(error.message, "error");
   } finally {
     createButton.disabled = false;
+  }
+}
+
+async function generateSmartTripCombined() {
+  if (!smartTripState.smartTripId) {
+    setSmartTripStatus("Create the Smart Trip link before generating the combined voucher.", "error");
+    return;
+  }
+  const button = document.querySelector("[data-smart-trip-combined]");
+  button.disabled = true;
+  setSmartTripStatus("Creating one branded flight and hotel voucher with the Smart Trip QR code...");
+  try {
+    const payload = await api(`/api/smart-trips/${smartTripState.smartTripId}/ticket-hotel`, { method: "POST" });
+    const htmlLink = document.querySelector("[data-smart-trip-combined-html]");
+    const pdfLink = document.querySelector("[data-smart-trip-combined-pdf]");
+    htmlLink.href = payload.generated.html.url;
+    pdfLink.href = payload.generated.pdf.url;
+    htmlLink.classList.remove("hidden");
+    pdfLink.classList.remove("hidden");
+    setSmartTripStatus(`Combined QR voucher generated with the flight and ${payload.generated.hotelCount} hotel${payload.generated.hotelCount === 1 ? "" : "s"}.`, "ok");
+  } catch (error) {
+    setSmartTripStatus(error.message, "error");
+  } finally {
+    button.disabled = false;
   }
 }
 

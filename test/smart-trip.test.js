@@ -25,6 +25,27 @@ test("detects the final outbound city instead of a transit or return city", () =
   assert.equal(prefill.destinationCity, "Trabzon");
   assert.equal(prefill.returnDate, "08/10/2026");
   assert.equal(prefill.passengerName, "TEST PASSENGER");
+  assert.equal(prefill.passengerFirstName, "TEST");
+});
+
+test("uses a reviewed English first name for the Smart Trip greeting", () => {
+  const input = normalizeSmartTripInput({
+    passengerFirstName: "Hoshyar",
+    destinationCity: "Istanbul",
+    sightseeingRequested: false
+  }, {
+    passengerName: "MR HOSHYAR ABDULRAZZAQ",
+    departureDate: "2026-10-10",
+    arrivalDate: "2026-10-10"
+  });
+  assert.equal(input.passengerFirstName, "Hoshyar");
+  assert.throws(() => normalizeSmartTripInput({
+    passengerFirstName: "هۆشیار",
+    destinationCity: "Istanbul"
+  }, {
+    passengerName: "MR HOSHYAR ABDULRAZZAQ",
+    departureDate: "2026-10-10"
+  }), /English letters/);
 });
 
 test("keeps complete ticket details in the Smart Trip flight snapshot", () => {
@@ -116,6 +137,7 @@ test("creates encoded Google Maps search and direction links", () => {
 test("renders branded flight, hotel, sightseeing, services, and countdown sections", () => {
   const html = generateSmartTripHtml({
     passengerName: "TEST PASSENGER",
+    passengerFirstNameEnglish: "Test",
     token: "abcdefghijklmnopqrstuvwxyz123456",
     passengerFirstNameKurdish: "تێست",
     destinationCity: "Trabzon",
@@ -143,7 +165,8 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   assert.match(html, /Direction to hotel/);
   assert.match(html, /Atatürk Köşkü/);
   assert.match(html, /بە هیوای گەشتێکی خۆش،/);
-  assert.match(html, /تێست/);
+  assert.match(html, />Test</);
+  assert.doesNotMatch(html, /تێست/);
   assert.match(html, /https:\/\/upload\.wikimedia\.org\/test\.jpg/);
   assert.match(html, /گەشتەکەت تەواو بکە/);
   assert.match(html, /ترانسفێری فڕۆکەخانە/);
