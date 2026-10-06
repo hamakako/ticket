@@ -72,6 +72,17 @@ function flightCards(flight = {}) {
   }).join("");
 }
 
+function flightDescriptionKurdish(flight = {}) {
+  return (flight.segments || []).map((segment) => {
+    const direction = segment.journeyDirection === "return" ? "گەڕانەوە" : "چوون";
+    const departure = segment.departureCity || segment.departureAirport;
+    const arrival = segment.arrivalCity || segment.arrivalAirport;
+    const duration = String(segment.duration || "").trim();
+    const layover = String(segment.layoverAfter || "").trim();
+    return `<p><strong>فڕینی ${direction}:</strong> فڕینی ${display(segment.airline)} ${display(segment.flightNumber, "")} لە ${display(departure)} بۆ ${display(arrival)} لە ڕۆژی ${display(segment.departureDate)} کاتژمێر ${display(segment.departureTime)} بەڕێدەکەوێت و کاتژمێر ${display(segment.arrivalTime)} دەگات.${duration && !/^not specified$/i.test(duration) ? ` ماوەی فڕین ${display(duration)} ـە.` : ""}${layover && !/^not specified$/i.test(layover) ? ` دوای ئەم فڕینە ${display(layover)} وەستان هەیە.` : ""}</p>`;
+  }).join("");
+}
+
 function hotelCards(trip) {
   return trip.hotels.map((hotel, index) => {
     const maps = hotelMapLinks(hotel, trip.destinationCity);
@@ -80,10 +91,16 @@ function hotelCards(trip) {
         <div class="number">${index + 1}</div>
         <div>
           <h3>${display(hotel.hotelName)}</h3>
+          ${hotel.referenceNumber ? `<p class="hotel-reference"><strong>Hotel reference:</strong> ${display(hotel.referenceNumber)}</p>` : ""}
           <p>${display(hotel.hotelCity, trip.destinationCity)}${hotel.hotelAddress ? ` · ${display(hotel.hotelAddress)}` : ""}</p>
           <div class="hotel-dates"><span>Check-in: <b>${display(hotel.checkInDate)}</b></span><span>Check-out: <b>${display(hotel.checkOutDate)}</b></span></div>
           ${hotel.hotelPhone ? `<p>Phone: ${display(hotel.hotelPhone)}</p>` : ""}
-          ${hotel.notes ? `<p class="hotel-note">${display(hotel.notes)}</p>` : ""}
+          ${hotel.hotelDescriptionKurdish || hotel.locationDescriptionKurdish || hotel.nearbyPlacesKurdish || hotel.notes ? `<div class="hotel-guide" dir="rtl" lang="ckb">
+            ${hotel.hotelDescriptionKurdish ? `<div><strong>دەربارەی هۆتێل</strong><p>${display(hotel.hotelDescriptionKurdish)}</p></div>` : ""}
+            ${hotel.locationDescriptionKurdish ? `<div><strong>شوێنی هۆتێل</strong><p>${display(hotel.locationDescriptionKurdish)}</p></div>` : ""}
+            ${hotel.nearbyPlacesKurdish ? `<div><strong>شوێنە گرنگە نزیکەکان</strong><p>${display(hotel.nearbyPlacesKurdish)}</p></div>` : ""}
+            ${hotel.notes ? `<div class="hotel-note"><strong>تێبینی هۆتێل</strong><p>${display(hotel.notes)}</p></div>` : ""}
+          </div>` : ""}
           <div class="button-row">
             <a class="button secondary" href="${escapeHtml(maps.searchUrl)}" target="_blank" rel="noreferrer">Open in Google Maps</a>
             <a class="button" href="${escapeHtml(maps.directionsUrl)}" target="_blank" rel="noreferrer">Direction to hotel</a>
@@ -173,6 +190,13 @@ function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
     .section { margin-top:24px; padding:26px; border:1px solid var(--line); border-radius:8px; background:#fff; }
     .section-heading { margin-bottom:18px; }
     .section-heading h2 { margin:5px 0 0; color:var(--navy); font-size:22px; }
+    .flight-section-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .flight-info-toggle,.flight-info-close { min-height:38px; padding:8px 12px; border:1px solid var(--teal); border-radius:6px; background:#eef7f8; color:var(--navy); cursor:pointer; font:inherit; font-size:12px; font-weight:800; }
+    .flight-info-panel { position:relative; margin:-4px 0 18px; padding:18px 54px 18px 18px; border-right:4px solid var(--teal); border-radius:7px; background:#f4fafb; color:var(--navy); }
+    .flight-info-panel[hidden] { display:none; }
+    .flight-info-panel h3 { margin:0 0 8px; }
+    .flight-info-panel p { margin:8px 0; color:var(--muted); line-height:1.9; }
+    .flight-info-close { position:absolute; top:12px; right:12px; min-width:34px; min-height:34px; padding:4px 9px; font-size:18px; line-height:1; }
     .journey-label { margin:18px 0 8px; padding:8px 12px; border-left:4px solid var(--teal); background:rgba(239,227,202,.55); color:var(--navy); font-size:11px; font-weight:800; text-transform:uppercase; }
     .flight-card { padding:16px; border:1px solid var(--line); border-radius:7px; }
     .flight-card + .flight-card { margin-top:10px; }
@@ -191,8 +215,13 @@ function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
     .number,.sight-number { width:34px; height:34px; border-radius:6px; display:grid; place-items:center; background:var(--cream); color:var(--navy); font-weight:800; }
     .hotel-card h3,.sight-card h3 { margin:0; color:var(--navy); }
     .hotel-card p { margin:7px 0; color:var(--muted); font-size:13px; }
+    .hotel-reference strong { color:var(--navy); }
     .hotel-dates { margin:12px 0; font-size:12px; }
-    .hotel-note,.tip { padding:12px; border-left:3px solid var(--teal); background:#f5fafb; }
+    .hotel-guide { margin-top:14px; display:grid; gap:9px; }
+    .hotel-guide > div { padding:12px; border-right:3px solid var(--teal); background:#f5fafb; }
+    .hotel-guide strong { color:var(--navy); }
+    .hotel-guide p { margin:5px 0 0; line-height:1.8; }
+    .hotel-note,.tip { padding:12px; background:#f5fafb; }
     .button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:9px 14px; border:1px solid var(--navy); border-radius:6px; background:var(--navy); color:#fff; font-size:12px; font-weight:800; text-decoration:none; }
     .button.secondary { border-color:var(--teal); background:#eef7f8; color:var(--navy); }
     .sight-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
@@ -215,7 +244,8 @@ function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
     [lang="ckb"], [dir="rtl"] { font-family:UniSIRWAN,Arial,sans-serif; }
     .services-intro { margin:-8px 0 18px; color:var(--muted); font-family:UniSIRWAN,Arial,sans-serif; line-height:1.8; }
     .services { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-    .service { padding:20px; border:1px solid var(--line); border-top:4px solid var(--teal); border-radius:7px; background:#f8fbfb; text-decoration:none; }
+    .service { overflow:hidden; padding:20px; border:1px solid var(--line); border-top:4px solid var(--teal); border-radius:7px; background:#f8fbfb; text-decoration:none; }
+    .service-photo { display:block; width:calc(100% + 40px); aspect-ratio:3/2; margin:-20px -20px 16px; object-fit:cover; }
     .service-mark { display:grid!important; place-items:center; width:34px; height:34px; margin:0 0 14px auto!important; border-radius:6px; background:var(--cream); color:var(--navy)!important; font-family:Arial,sans-serif; font-size:11px!important; font-weight:800; }
     .service strong { display:block; color:var(--navy); }
     .service span { display:block; margin-top:8px; color:var(--muted); font-size:13px; line-height:1.8; }
@@ -231,7 +261,8 @@ function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
       .header { border-bottom:2px solid var(--teal); }
       .header-inner,.shell { width:100%; }
       .shell { padding:10px 0 0; }
-      .document-tools,.contact-top,.contact .button { display:none!important; }
+      .document-tools,.contact-top,.contact .button,.flight-info-toggle,.flight-info-close { display:none!important; }
+      .flight-info-panel[hidden] { display:block; }
       .hero { box-shadow:none; }
       .hero,.section,.flight-card,.hotel-card,.sight-card,.mini-plan article,.contact { break-inside:avoid; }
       .section { margin-top:14px; }
@@ -251,6 +282,8 @@ function smartTripStyles(fontUrl = "/assets/UniSIRWAN%20Noor%20Regular.ttf") {
       .hero { padding:20px; grid-template-columns:1fr; }
       .countdown { min-width:0; width:100%; }
       .section { padding:18px; }
+      .flight-section-heading { align-items:flex-start; flex-direction:column; }
+      .flight-info-toggle { width:100%; }
       .sight-grid,.mini-plan,.services { grid-template-columns:1fr; }
       .route { grid-template-columns:1fr 34px 1fr; }
       .hotel-card { grid-template-columns:1fr; }
@@ -272,9 +305,9 @@ function generateSmartTripHtml(trip, options = {}) {
   const fontUrl = publicUrl("/assets/UniSIRWAN%20Noor%20Regular.ttf", options.baseUrl);
   const pdfUrl = trip.token ? `/smart-trip/${encodeURIComponent(trip.token)}/pdf` : "";
   const services = [
-    ["01", "eSIM", "بۆ ئەوەی لە گەشتەکەتدا بێ ئینتەرنێت نەبیت، هەر ئێستا دەتوانیت eSIM ـی گونجاو بۆ وڵاتی مەبەست داوا بکەیت.", `سڵاو MK Business and Travel، دەمەوێت eSIM بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
-    ["02", "ترانسفێری فڕۆکەخانە", "بە ئارامی بگەڕێ؛ دەتوانین گواستنەوەت لە فڕۆکەخانە بۆ هۆتێل و لە هۆتێل بۆ فڕۆکەخانە بۆ ڕێک بخەین.", `سڵاو MK Business and Travel، دەمەوێت ترانسفێری فڕۆکەخانە بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`],
-    ["03", "گەشتی ڕۆژانە", "بۆ بینینی جوانترین شوێنەکانی شار، گەشتی ڕۆژانەی تایبەت یان گروپی بە پێی کات و حەزەکانت داوا بکە.", `سڵاو MK Business and Travel، دەمەوێت زانیاری گەشتی ڕۆژانە بۆ ${destination} وەربگرم.`]
+    ["01", "eSIM", "بۆ ئەوەی لە گەشتەکەتدا بێ ئینتەرنێت نەبیت، هەر ئێستا دەتوانیت eSIM ـی گونجاو بۆ وڵاتی مەبەست داوا بکەیت.", `سڵاو MK Business and Travel، دەمەوێت eSIM بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`, publicUrl("/assets/services/esim.jpg", options.baseUrl), "Travel eSIM service"],
+    ["02", "ترانسفێری فڕۆکەخانە", "بە ئارامی بگەڕێ؛ دەتوانین گواستنەوەت لە فڕۆکەخانە بۆ هۆتێل و لە هۆتێل بۆ فڕۆکەخانە بۆ ڕێک بخەین.", `سڵاو MK Business and Travel، دەمەوێت ترانسفێری فڕۆکەخانە بۆ گەشتەکەم بۆ ${destination} داوا بکەم.`, publicUrl("/assets/services/airport-transfer.jpg", options.baseUrl), "Airport transfer service"],
+    ["03", "گەشتی ڕۆژانە", "بۆ بینینی جوانترین شوێنەکانی شار، گەشتی ڕۆژانەی تایبەت یان گروپی بە پێی کات و حەزەکانت داوا بکە.", `سڵاو MK Business and Travel، دەمەوێت زانیاری گەشتی ڕۆژانە بۆ ${destination} وەربگرم.`, publicUrl("/assets/services/daily-tours.jpg", options.baseUrl), "Daily city tours"]
   ];
   return `<!doctype html>
 <html lang="en">
@@ -303,11 +336,11 @@ function generateSmartTripHtml(trip, options = {}) {
       <div class="countdown" data-countdown="${countdownAt}"><span>Time until departure</span><div class="count-grid"><div><b data-days>--</b><small>DAYS</small></div><div><b data-hours>--</b><small>HOURS</small></div><div><b data-minutes>--</b><small>MIN</small></div><div><b data-seconds>--</b><small>SEC</small></div></div></div>
     </section>
 
-    <section class="section"><div class="section-heading"><span>FLIGHT</span><h2>Flight information</h2></div>${flightCards(trip.flight)}</section>
+    <section class="section"><div class="section-heading flight-section-heading"><div><span>FLIGHT</span><h2>Flight information</h2></div><button class="flight-info-toggle" type="button" aria-controls="flight-info-panel" onclick="document.getElementById('flight-info-panel').hidden=false">زانیاریی کورت بە کوردی</button></div><div class="flight-info-panel" id="flight-info-panel" data-flight-info-panel dir="rtl" lang="ckb" hidden><button class="flight-info-close" type="button" aria-label="داخستن" onclick="this.closest('[data-flight-info-panel]').hidden=true">×</button><h3>کورتەی زانیاریی فڕین</h3>${flightDescriptionKurdish(trip.flight)}</div>${flightCards(trip.flight)}</section>
     ${trip.hotels.length ? `<section class="section"><div class="section-heading"><span>STAY</span><h2>Hotels</h2></div><div class="hotel-list">${hotelCards(trip)}</div></section>` : ""}
     ${sightseeingCards(trip)}
     ${trip.notes ? `<section class="section"><div class="section-heading"><span>NOTES</span><h2>Trip notes</h2></div><div class="notes">${display(trip.notes)}</div></section>` : ""}
-    <section class="section" dir="rtl" lang="ckb"><div class="section-heading"><span>MK SERVICES</span><h2>گەشتەکەت تەواو بکە</h2></div><p class="services-intro">پێش گەشتەکەت ئەم خزمەتگوزارییانە ڕێک بخە بۆ ئەوەی بە ئارامی و بەبێ نیگەرانی گەشت بکەیت.</p><div class="services">${services.map(([number, name, description, message]) => `<a class="service" href="${escapeHtml(whatsappUrl(message))}" target="_blank" rel="noreferrer"><span class="service-mark">${number}</span><strong>${name}</strong><span>${description}</span><b>داواکاری لە WhatsApp</b></a>`).join("")}</div></section>
+    <section class="section" dir="rtl" lang="ckb"><div class="section-heading"><span>MK SERVICES</span><h2>گەشتەکەت تەواو بکە</h2></div><p class="services-intro">پێش گەشتەکەت ئەم خزمەتگوزارییانە ڕێک بخە بۆ ئەوەی بە ئارامی و بەبێ نیگەرانی گەشت بکەیت.</p><div class="services">${services.map(([number, name, description, message, imageUrl, imageAlt]) => `<a class="service" href="${escapeHtml(whatsappUrl(message))}" target="_blank" rel="noreferrer"><img class="service-photo" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(imageAlt)}"><span class="service-mark">${number}</span><strong>${name}</strong><span>${description}</span><b>داواکاری لە WhatsApp</b></a>`).join("")}</div></section>
     <section class="contact" dir="rtl" lang="ckb"><div><h2>پێویستت بە یارمەتییە؟</h2><p>تیمی MK Business and Travel لە WhatsApp وەڵامت دەداتەوە.</p></div><a class="button" href="${escapeHtml(whatsappUrl(contactMessage))}" target="_blank" rel="noreferrer">پەیوەندی بە MK</a></section>
   </main>
   <footer class="footer" dir="rtl" lang="ckb">ئەم لینکە تا کاتی سڕینەوەی لەلایەن MK Business and Travel بەردەست دەمێنێتەوە.</footer>

@@ -120,12 +120,22 @@ test("normalizes and sorts multiple optional hotels", () => {
     destinationCity: "Istanbul",
     hotels: [
       { hotelName: "Second Hotel", checkInDate: "2026-10-05" },
-      { hotelName: "First Hotel", hotelCity: "", checkInDate: "2026-10-02" },
+      {
+        referenceNumber: "HOTEL123",
+        hotelName: "First Hotel",
+        hotelCity: "",
+        checkInDate: "2026-10-02",
+        hotelDescriptionKurdish: "وەسفی هۆتێل",
+        locationDescriptionKurdish: "وەسفی شوێن",
+        nearbyPlacesKurdish: "شوێنە نزیکەکان"
+      },
       { hotelName: "" }
     ]
   });
   assert.deepEqual(input.hotels.map((hotel) => hotel.hotelName), ["First Hotel", "Second Hotel"]);
   assert.equal(input.hotels[0].hotelCity, "Istanbul");
+  assert.equal(input.hotels[0].referenceNumber, "HOTEL123");
+  assert.equal(input.hotels[0].locationDescriptionKurdish, "وەسفی شوێن");
 });
 
 test("creates encoded Google Maps search and direction links", () => {
@@ -148,7 +158,19 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
     returnDate: "08/10/2026",
     tripDayCount: 8,
     flight: { pnr: "ABC123", segments: itinerary.segments },
-    hotels: [{ hotelName: "Test Hotel", hotelCity: "Trabzon", hotelAddress: "Center", checkInDate: "2026-10-01", checkOutDate: "2026-10-08", hotelPhone: "", notes: "" }],
+    hotels: [{
+      referenceNumber: "HTL-7788",
+      hotelName: "Test Hotel",
+      hotelCity: "Trabzon",
+      hotelAddress: "Center",
+      checkInDate: "2026-10-01",
+      checkOutDate: "2026-10-08",
+      hotelPhone: "",
+      hotelDescriptionKurdish: "هۆتێلێکی گونجاوە بۆ گەشتیاران.",
+      locationDescriptionKurdish: "لە ناوچەیەکی ناوەندی شارە.",
+      nearbyPlacesKurdish: "نزیکە لە شوێنە گەشتیارییە گرنگەکان.",
+      notes: "ناسنامە لەگەڵ خۆت ببە."
+    }],
     sightseeingRequested: true,
     sightseeingStatus: "ready",
     sightseeing: [{ name: "Atatürk Köşkü", description: "وەسفێکی کورت", mapUrl: "https://www.google.com/maps/search/?api=1&query=test", imageUrl: "https://upload.wikimedia.org/test.jpg", imageSourceUrl: "https://en.wikipedia.org/?curid=1" }],
@@ -163,7 +185,13 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   assert.match(html, /@page \{ size:A4/);
   assert.match(html, /8 day plan/);
   assert.match(html, /Test Hotel/);
+  assert.match(html, /HTL-7788/);
+  assert.match(html, /دەربارەی هۆتێل/);
+  assert.match(html, /شوێنی هۆتێل/);
+  assert.match(html, /شوێنە گرنگە نزیکەکان/);
   assert.match(html, /Direction to hotel/);
+  assert.match(html, /زانیاریی کورت بە کوردی/);
+  assert.match(html, /کورتەی زانیاریی فڕین/);
   assert.match(html, /Atatürk Köşkü/);
   assert.match(html, /بە هیوای گەشتێکی خۆش،/);
   assert.match(html, />Test</);
@@ -173,6 +201,9 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   assert.match(html, /ترانسفێری فڕۆکەخانە/);
   assert.match(html, /گەشتی ڕۆژانە/);
   assert.match(html, /eSIM/);
+  assert.match(html, /assets\/services\/esim\.jpg/);
+  assert.match(html, /assets\/services\/airport-transfer\.jpg/);
+  assert.match(html, /assets\/services\/daily-tours\.jpg/);
   assert.match(html, /noindex,nofollow/);
   assert.match(html, /تا کاتی سڕینەوەی لەلایەن MK Business and Travel/);
   assert.doesNotMatch(html, /Link expired|2026-10-22/);

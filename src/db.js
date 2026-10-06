@@ -140,12 +140,16 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       smart_trip_id INTEGER NOT NULL,
       position INTEGER NOT NULL DEFAULT 0,
+      reference_number TEXT NOT NULL DEFAULT '',
       hotel_name TEXT NOT NULL,
       hotel_city TEXT NOT NULL DEFAULT '',
       hotel_address TEXT NOT NULL DEFAULT '',
       check_in_date TEXT NOT NULL DEFAULT '',
       check_out_date TEXT NOT NULL DEFAULT '',
       hotel_phone TEXT NOT NULL DEFAULT '',
+      hotel_description_ku TEXT NOT NULL DEFAULT '',
+      location_description_ku TEXT NOT NULL DEFAULT '',
+      nearby_places_ku TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
       FOREIGN KEY (smart_trip_id) REFERENCES smart_trips(id) ON DELETE CASCADE
     );
@@ -170,6 +174,10 @@ function initDatabase() {
   ensureColumn("smart_trips", "passenger_first_name_english", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("smart_trips", "ticket_design", "TEXT NOT NULL DEFAULT 'modern'");
   ensureColumn("smart_trips", "trip_day_count", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("smart_trip_hotels", "reference_number", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("smart_trip_hotels", "hotel_description_ku", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("smart_trip_hotels", "location_description_ku", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("smart_trip_hotels", "nearby_places_ku", "TEXT NOT NULL DEFAULT ''");
 
   return db;
 }
@@ -591,9 +599,10 @@ function addGeneratedFile({ itineraryType, itineraryId, fileName, filePath, file
 function mapSmartTrip(row) {
   if (!row) return null;
   const hotels = database().prepare(`
-    SELECT hotel_name AS hotelName, hotel_city AS hotelCity, hotel_address AS hotelAddress,
+    SELECT reference_number AS referenceNumber, hotel_name AS hotelName, hotel_city AS hotelCity, hotel_address AS hotelAddress,
       check_in_date AS checkInDate, check_out_date AS checkOutDate,
-      hotel_phone AS hotelPhone, notes
+      hotel_phone AS hotelPhone, hotel_description_ku AS hotelDescriptionKurdish,
+      location_description_ku AS locationDescriptionKurdish, nearby_places_ku AS nearbyPlacesKurdish, notes
     FROM smart_trip_hotels
     WHERE smart_trip_id = ?
     ORDER BY position, check_in_date, id
@@ -665,21 +674,26 @@ function createSmartTrip(data) {
     const smartTripId = Number(result.lastInsertRowid);
     const hotelStmt = db.prepare(`
       INSERT INTO smart_trip_hotels (
-        smart_trip_id, position, hotel_name, hotel_city, hotel_address,
-        check_in_date, check_out_date, hotel_phone, notes
+        smart_trip_id, position, reference_number, hotel_name, hotel_city, hotel_address,
+        check_in_date, check_out_date, hotel_phone, hotel_description_ku,
+        location_description_ku, nearby_places_ku, notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     data.hotels.forEach((hotel, index) => {
       hotelStmt.run(
         smartTripId,
         index,
+        hotel.referenceNumber,
         hotel.hotelName,
         hotel.hotelCity,
         hotel.hotelAddress,
         hotel.checkInDate,
         hotel.checkOutDate,
         hotel.hotelPhone,
+        hotel.hotelDescriptionKurdish,
+        hotel.locationDescriptionKurdish,
+        hotel.nearbyPlacesKurdish,
         hotel.notes
       );
     });
@@ -737,20 +751,25 @@ function updateSmartTrip(id, data) {
     db.prepare("DELETE FROM smart_trip_hotels WHERE smart_trip_id = ?").run(id);
     const hotelStmt = db.prepare(`
       INSERT INTO smart_trip_hotels (
-        smart_trip_id, position, hotel_name, hotel_city, hotel_address,
-        check_in_date, check_out_date, hotel_phone, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        smart_trip_id, position, reference_number, hotel_name, hotel_city, hotel_address,
+        check_in_date, check_out_date, hotel_phone, hotel_description_ku,
+        location_description_ku, nearby_places_ku, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     data.hotels.forEach((hotel, index) => {
       hotelStmt.run(
         id,
         index,
+        hotel.referenceNumber,
         hotel.hotelName,
         hotel.hotelCity,
         hotel.hotelAddress,
         hotel.checkInDate,
         hotel.checkOutDate,
         hotel.hotelPhone,
+        hotel.hotelDescriptionKurdish,
+        hotel.locationDescriptionKurdish,
+        hotel.nearbyPlacesKurdish,
         hotel.notes
       );
     });

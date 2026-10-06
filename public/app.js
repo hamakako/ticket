@@ -495,12 +495,16 @@ function bindSmartTripDialog() {
   document.querySelector("[data-add-smart-hotel]").addEventListener("click", () => {
     syncSmartTripHotels();
     smartTripState.hotels.push({
+      referenceNumber: "",
       hotelName: "",
       hotelCity: smartTripState.prefill?.destinationCity || "",
       hotelAddress: "",
       checkInDate: "",
       checkOutDate: "",
       hotelPhone: "",
+      hotelDescriptionKurdish: "",
+      locationDescriptionKurdish: "",
+      nearbyPlacesKurdish: "",
       notes: ""
     });
     renderSmartTripHotels();
@@ -594,13 +598,17 @@ function renderSmartTripHotels() {
         <small data-smart-hotel-extract-status></small>
       </div>
       <div class="smart-trip-hotel-grid">
+        <label>Hotel reference number<input type="text" maxlength="120" data-smart-hotel-field="referenceNumber" value="${escapeAttribute(hotel.referenceNumber)}"></label>
         <label>Hotel name<input type="text" maxlength="160" data-smart-hotel-field="hotelName" value="${escapeAttribute(hotel.hotelName)}" required></label>
         <label>Hotel city<input type="text" maxlength="120" data-smart-hotel-field="hotelCity" value="${escapeAttribute(hotel.hotelCity)}"></label>
         <label class="full-span">Hotel address, optional<input type="text" maxlength="300" data-smart-hotel-field="hotelAddress" value="${escapeAttribute(hotel.hotelAddress)}"></label>
         <label>Check-in date<input type="date" data-smart-hotel-field="checkInDate" value="${escapeAttribute(hotel.checkInDate)}"></label>
         <label>Check-out date<input type="date" data-smart-hotel-field="checkOutDate" value="${escapeAttribute(hotel.checkOutDate)}"></label>
         <label>Hotel phone, optional<input type="tel" maxlength="80" data-smart-hotel-field="hotelPhone" value="${escapeAttribute(hotel.hotelPhone)}"></label>
-        <label class="full-span">Notes, optional<textarea maxlength="500" data-smart-hotel-field="notes">${escapeHtml(hotel.notes)}</textarea></label>
+        <label class="full-span">Hotel description in Kurdish Sorani<textarea maxlength="800" dir="rtl" lang="ckb" data-smart-hotel-field="hotelDescriptionKurdish">${escapeHtml(hotel.hotelDescriptionKurdish)}</textarea></label>
+        <label class="full-span">Location description in Kurdish Sorani<textarea maxlength="800" dir="rtl" lang="ckb" data-smart-hotel-field="locationDescriptionKurdish">${escapeHtml(hotel.locationDescriptionKurdish)}</textarea></label>
+        <label class="full-span">Important nearby places in Kurdish Sorani<textarea maxlength="800" dir="rtl" lang="ckb" data-smart-hotel-field="nearbyPlacesKurdish">${escapeHtml(hotel.nearbyPlacesKurdish)}</textarea></label>
+        <label class="full-span">Hotel notes in Kurdish Sorani, optional<textarea maxlength="800" dir="rtl" lang="ckb" data-smart-hotel-field="notes">${escapeHtml(hotel.notes)}</textarea></label>
       </div>
     </div>
   `).join("");

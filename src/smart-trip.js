@@ -131,13 +131,17 @@ function normalizeHotels(value, destinationCity, referenceTimestamp = Date.now()
       const checkInDate = isoDate(hotel?.checkInDate, referenceTimestamp);
       const checkInTimestamp = dateTimestamp(checkInDate, referenceTimestamp) ?? referenceTimestamp;
       return {
+        referenceNumber: limitedText(hotel?.referenceNumber, 120),
         hotelName: limitedText(hotel?.hotelName, 160),
         hotelCity: limitedText(hotel?.hotelCity, 120) || destinationCity,
         hotelAddress: limitedText(hotel?.hotelAddress, 300),
         checkInDate,
         checkOutDate: isoDate(hotel?.checkOutDate, checkInTimestamp),
         hotelPhone: limitedText(hotel?.hotelPhone, 80),
-        notes: limitedText(hotel?.notes, 500)
+        hotelDescriptionKurdish: limitedText(hotel?.hotelDescriptionKurdish, 800),
+        locationDescriptionKurdish: limitedText(hotel?.locationDescriptionKurdish, 800),
+        nearbyPlacesKurdish: limitedText(hotel?.nearbyPlacesKurdish, 800),
+        notes: limitedText(hotel?.notes, 800)
       };
     })
     .filter((hotel) => hotel.hotelName)
