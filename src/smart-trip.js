@@ -79,10 +79,6 @@ function dateTimestamp(value, referenceTimestamp = Date.now()) {
   return datePartsTimestamp(date);
 }
 
-function addDays(timestamp, days) {
-  return new Date(timestamp + days * 24 * 60 * 60 * 1000).toISOString();
-}
-
 function calculateTripDayCount(arrivalDate, returnDate, hotels = [], referenceTimestamp = Date.now()) {
   const arrivalTime = dateTimestamp(arrivalDate, referenceTimestamp)
     ?? dateTimestamp(hotels?.[0]?.checkInDate, referenceTimestamp)
@@ -182,22 +178,6 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
   };
 }
 
-function calculateSmartTripExpiry(returnDate, hotels, departureDate, now = Date.now()) {
-  const departureTime = dateTimestamp(departureDate, now) ?? now;
-  const returnTime = dateTimestamp(returnDate, departureTime);
-  let expiry = returnTime !== null ? addDays(returnTime, 14) : "";
-
-  if (!expiry) {
-    const checkoutTimes = (hotels || [])
-      .map((hotel) => dateTimestamp(hotel.checkOutDate, departureTime))
-      .filter((timestamp) => timestamp !== null);
-    if (checkoutTimes.length) expiry = addDays(Math.max(...checkoutTimes), 14);
-  }
-
-  if (!expiry) expiry = addDays(departureTime, 30);
-  return Date.parse(expiry) > now ? expiry : addDays(now, 30);
-}
-
 function flightSnapshot(itinerary = {}) {
   return {
     pnr: meaningful(itinerary.pnr),
@@ -248,7 +228,6 @@ function hotelMapLinks(hotel, fallbackCity = "") {
 
 module.exports = {
   calculateTripDayCount,
-  calculateSmartTripExpiry,
   deriveSmartTripPrefill,
   flightSnapshot,
   hotelMapLinks,

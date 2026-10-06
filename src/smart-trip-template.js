@@ -310,7 +310,7 @@ function generateSmartTripHtml(trip, options = {}) {
     <section class="section" dir="rtl" lang="ckb"><div class="section-heading"><span>MK SERVICES</span><h2>گەشتەکەت تەواو بکە</h2></div><p class="services-intro">پێش گەشتەکەت ئەم خزمەتگوزارییانە ڕێک بخە بۆ ئەوەی بە ئارامی و بەبێ نیگەرانی گەشت بکەیت.</p><div class="services">${services.map(([number, name, description, message]) => `<a class="service" href="${escapeHtml(whatsappUrl(message))}" target="_blank" rel="noreferrer"><span class="service-mark">${number}</span><strong>${name}</strong><span>${description}</span><b>داواکاری لە WhatsApp</b></a>`).join("")}</div></section>
     <section class="contact" dir="rtl" lang="ckb"><div><h2>پێویستت بە یارمەتییە؟</h2><p>تیمی MK Business and Travel لە WhatsApp وەڵامت دەداتەوە.</p></div><a class="button" href="${escapeHtml(whatsappUrl(contactMessage))}" target="_blank" rel="noreferrer">پەیوەندی بە MK</a></section>
   </main>
-  <footer class="footer" dir="rtl" lang="ckb">ئەم لینکە تایبەتە تا ${display(new Date(trip.expiresAt).toISOString().slice(0, 10))} بەردەستە.</footer>
+  <footer class="footer" dir="rtl" lang="ckb">ئەم لینکە تا کاتی سڕینەوەی لەلایەن MK Business and Travel بەردەست دەمێنێتەوە.</footer>
   <script>
     (() => {
       const root = document.querySelector('[data-countdown]');
@@ -337,11 +337,11 @@ function generateSmartTripHtml(trip, options = {}) {
 </html>`;
 }
 
-function generateExpiredSmartTripHtml() {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Smart Trip expired</title><style>${smartTripStyles()}</style></head><body><header class="header"><div class="header-inner"><div class="brand"><img src="/assets/mk-logo.png" alt="MK logo"><div><strong>MK Business and Travel</strong><span>Grand Swiss Hotel, Ground Floor, Pirmam</span></div></div></div></header><main class="shell"><section class="hero"><div><span class="eyebrow">SMART TRIP</span><h1>Link expired</h1><p>This Smart Trip link is no longer available. Please contact MK Business and Travel for assistance.</p></div></section></main></body></html>`;
+function generateUnavailableSmartTripHtml() {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Smart Trip unavailable</title><style>${smartTripStyles()}</style></head><body><header class="header"><div class="header-inner"><div class="brand"><img src="/assets/mk-logo.png" alt="MK logo"><div><strong>MK Business and Travel</strong><span>Grand Swiss Hotel, Ground Floor, Pirmam</span></div></div></div></header><main class="shell"><section class="hero"><div><span class="eyebrow">SMART TRIP</span><h1>Link unavailable</h1><p>This Smart Trip link is not available. It may have been deleted by MK Business and Travel.</p></div></section></main></body></html>`;
 }
 
 module.exports = {
-  generateExpiredSmartTripHtml,
-  generateSmartTripHtml
+  generateSmartTripHtml,
+  generateUnavailableSmartTripHtml
 };

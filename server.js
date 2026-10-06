@@ -26,7 +26,6 @@ const {
   getSmartTripById,
   getSmartTripByToken,
   listSmartTrips,
-  purgeExpiredSmartTrips,
   updateSmartTrip
 } = require("./src/db");
 const {
@@ -45,12 +44,11 @@ const { enrichSightseeingImages } = require("./src/place-images");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
 const {
   calculateTripDayCount,
-  calculateSmartTripExpiry,
   deriveSmartTripPrefill,
   flightSnapshot,
   normalizeSmartTripInput
 } = require("./src/smart-trip");
-const { generateExpiredSmartTripHtml, generateSmartTripHtml } = require("./src/smart-trip-template");
+const { generateSmartTripHtml, generateUnavailableSmartTripHtml } = require("./src/smart-trip-template");
 const {
   generateFlightHtml,
   generateFlightProposalHtml,
@@ -68,6 +66,7 @@ const HTML_DIR = path.join(ROOT, "outputs", "html");
 const PDF_DIR = path.join(ROOT, "outputs", "pdf");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
 const PROPOSAL_RETENTION_DAYS = Number(process.env.PROPOSAL_RETENTION_DAYS || 15);
+const PERMANENT_SMART_TRIP_EXPIRY = "9999-12-31T23:59:59.000Z";
 const TICKET_DESIGNS = new Set(["modern", "executive", "minimal"]);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -427,7 +426,6 @@ function cleanupOldFilesIn(directory) {
 function runExpiredCleanup() {
   try {
     const result = purgeExpiredItineraries(RETENTION_DAYS);
-    const expiredSmartTrips = purgeExpiredSmartTrips();
     const generatedFiles = [...new Set(result.generatedFiles)];
     const sourceFiles = [...new Set(result.sourceFiles)];
     generatedFiles.forEach(deleteGeneratedFile);
@@ -436,9 +434,9 @@ function runExpiredCleanup() {
     const oldUntrackedOutputs = cleanupOldFilesIn(HTML_DIR) + cleanupOldFilesIn(PDF_DIR);
 
     const removedRecords = result.flightCount + result.hotelCount;
-    if (removedRecords || expiredSmartTrips || generatedFiles.length || sourceFiles.length || oldOriginalUploads || oldUntrackedOutputs) {
+    if (removedRecords || generatedFiles.length || sourceFiles.length || oldOriginalUploads || oldUntrackedOutputs) {
       console.log(
-        `Cleanup removed ${removedRecords} records, ${expiredSmartTrips} Smart Trips, ${generatedFiles.length + oldUntrackedOutputs} generated files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
+        `Cleanup removed ${removedRecords} records, ${generatedFiles.length + oldUntrackedOutputs} generated files, ${sourceFiles.length + oldOriginalUploads} original uploads.`
       );
     }
   } catch (error) {
@@ -457,8 +455,8 @@ app.get("/smart-trip/:token", (req, res) => {
   res.setHeader("Cache-Control", "private, no-store");
   const token = String(req.params.token || "");
   const trip = /^[A-Za-z0-9_-]{20,80}$/.test(token) ? getSmartTripByToken(token) : null;
-  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
-    res.status(410).type("html").send(generateExpiredSmartTripHtml());
+  if (!trip) {
+    res.status(404).type("html").send(generateUnavailableSmartTripHtml());
     return;
   }
   res.type("html").send(generateSmartTripHtml(trip));
@@ -468,8 +466,8 @@ app.get("/smart-trip/:token/pdf", asyncRoute(async (req, res) => {
   res.setHeader("Cache-Control", "private, no-store");
   const token = String(req.params.token || "");
   const trip = /^[A-Za-z0-9_-]{20,80}$/.test(token) ? getSmartTripByToken(token) : null;
-  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
-    res.status(410).json({ error: "This Smart Trip link has expired or is no longer available." });
+  if (!trip) {
+    res.status(404).json({ error: "This Smart Trip link is not available or has been deleted." });
     return;
   }
 
@@ -506,7 +504,6 @@ app.get("/api/smart-trips", (_req, res) => {
       trip.hotels
     ),
     createdAt: trip.createdAt,
-    expiresAt: trip.expiresAt,
     sightseeingStatus: trip.sightseeingStatus,
     ticketDesign: trip.ticketDesign,
     hotelCount: trip.hotels.length
@@ -576,8 +573,8 @@ app.post("/api/smart-trips/:id/retry-guide", asyncRoute(async (req, res) => {
 app.post("/api/smart-trips/:id/ticket", asyncRoute(async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const trip = getSmartTripById(Number(req.params.id));
-  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
-    res.status(404).json({ error: "Smart Trip link not found or expired." });
+  if (!trip) {
+    res.status(404).json({ error: "Smart Trip link not found." });
     return;
   }
   const generated = await saveSmartTripTicketFiles(req, trip);
@@ -594,8 +591,8 @@ app.post("/api/smart-trips/:id/ticket", asyncRoute(async (req, res) => {
 app.post("/api/smart-trips/:id/ticket-hotel", asyncRoute(async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const trip = getSmartTripById(Number(req.params.id));
-  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
-    res.status(404).json({ error: "Smart Trip link not found or expired." });
+  if (!trip) {
+    res.status(404).json({ error: "Smart Trip link not found." });
     return;
   }
   if (!trip.hotels.length) {
@@ -673,7 +670,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
       sightseeing: guide.sightseeing,
       travelTip: guide.travelTip,
       miniPlan: guide.miniPlan,
-      expiresAt: calculateSmartTripExpiry(input.returnDate, input.hotels, input.departureDate)
+      expiresAt: PERMANENT_SMART_TRIP_EXPIRY
     });
     res.json({
       smartTrip: {
@@ -683,8 +680,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
         passengerName: updated.passengerName,
         destinationCity: updated.destinationCity,
         destinationCountry: updated.destinationCountry,
-        tripDayCount: input.tripDayCount,
-        expiresAt: updated.expiresAt
+        tripDayCount: input.tripDayCount
       }
     });
   } finally {
@@ -946,13 +942,12 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     sightseeing: guide.sightseeing,
     travelTip: guide.travelTip,
     miniPlan: guide.miniPlan,
-    expiresAt: calculateSmartTripExpiry(input.returnDate, input.hotels, input.departureDate)
+    expiresAt: PERMANENT_SMART_TRIP_EXPIRY
   });
   res.status(201).json({
     smartTrip: {
       id: trip.id,
       url: `/smart-trip/${trip.token}`,
-      expiresAt: trip.expiresAt,
       sightseeingStatus: trip.sightseeingStatus,
       ticketDesign: trip.ticketDesign,
       hotelCount: trip.hotels.length,

@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 
 const {
   calculateTripDayCount,
-  calculateSmartTripExpiry,
   deriveSmartTripPrefill,
   hotelMapLinks,
   normalizeSmartTripInput
@@ -70,32 +69,6 @@ test("keeps complete ticket details in the Smart Trip flight snapshot", () => {
   assert.deepEqual(snapshot.importantNotes, ["Arrive early"]);
 });
 
-test("uses return date plus 14 days for expiry", () => {
-  assert.equal(
-    calculateSmartTripExpiry("08/10/2026", [{ checkOutDate: "20/10/2026" }], "01/10/2026"),
-    "2026-10-22T23:59:59.000Z"
-  );
-});
-
-test("uses the latest hotel checkout when there is no return", () => {
-  assert.equal(
-    calculateSmartTripExpiry("", [{ checkOutDate: "12/10/2026" }, { checkOutDate: "20/10/2026" }], "01/10/2026"),
-    "2026-11-03T23:59:59.000Z"
-  );
-});
-
-test("uses departure plus 30 days when no return or hotel checkout exists", () => {
-  assert.equal(calculateSmartTripExpiry("", [], "01/10/2026"), "2026-10-31T23:59:59.000Z");
-});
-
-test("assigns the current travel year when ticket dates omit the year", () => {
-  const now = Date.UTC(2026, 9, 4, 12);
-  assert.equal(
-    calculateSmartTripExpiry("Sun, Oct 18", [], "Sun, Oct 11", now),
-    "2026-11-01T23:59:59.000Z"
-  );
-});
-
 test("moves a yearless January return into the year after a December departure", () => {
   const now = Date.UTC(2026, 11, 1, 12);
   const input = normalizeSmartTripInput({ destinationCity: "Istanbul" }, {
@@ -113,14 +86,6 @@ test("creates one daily plan day for every inclusive destination date", () => {
 
 test("uses hotel checkout to determine trip length when there is no return flight", () => {
   assert.equal(calculateTripDayCount("2026-10-01", "", [{ checkOutDate: "2026-10-05" }]), 5);
-});
-
-test("never creates a Smart Trip link that is already expired", () => {
-  const now = Date.UTC(2026, 9, 4, 12);
-  assert.equal(
-    calculateSmartTripExpiry("01/01/2020", [], "01/01/2020", now),
-    "2026-11-03T12:00:00.000Z"
-  );
 });
 
 test("normalizes and sorts multiple optional hotels", () => {
@@ -154,7 +119,6 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
     departureDate: "01/10/2026",
     departureTime: "10:00",
     returnDate: "08/10/2026",
-    expiresAt: "2026-10-22T23:59:59.000Z",
     flight: { pnr: "ABC123", segments: itinerary.segments },
     hotels: [{ hotelName: "Test Hotel", hotelCity: "Trabzon", hotelAddress: "Center", checkInDate: "2026-10-01", checkOutDate: "2026-10-08", hotelPhone: "", notes: "" }],
     sightseeingRequested: true,
@@ -182,6 +146,8 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
   assert.match(html, /گەشتی ڕۆژانە/);
   assert.match(html, /eSIM/);
   assert.match(html, /noindex,nofollow/);
+  assert.match(html, /تا کاتی سڕینەوەی لەلایەن MK Business and Travel/);
+  assert.doesNotMatch(html, /Link expired|2026-10-22/);
 });
 
 test("renders the Kurdish fallback without breaking the Smart Trip when AI is unavailable", () => {
@@ -192,7 +158,6 @@ test("renders the Kurdish fallback without breaking the Smart Trip when AI is un
     departureDate: "01/10/2026",
     departureTime: "10:00",
     returnDate: "",
-    expiresAt: "2026-10-31T23:59:59.000Z",
     flight: { pnr: "ABC123", segments: itinerary.segments.slice(0, 1) },
     hotels: [],
     sightseeingRequested: true,

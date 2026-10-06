@@ -760,7 +760,6 @@ function updateSmartTrip(id, data) {
 function listSmartTrips() {
   return database().prepare(`
     SELECT * FROM smart_trips
-    WHERE datetime(expires_at) > datetime('now')
     ORDER BY datetime(created_at) DESC, id DESC
   `).all().map(mapSmartTrip);
 }
@@ -768,11 +767,6 @@ function listSmartTrips() {
 function deleteSmartTrip(id) {
   const result = database().prepare("DELETE FROM smart_trips WHERE id = ?").run(id);
   return Number(result.changes || 0) > 0;
-}
-
-function purgeExpiredSmartTrips() {
-  const result = database().prepare("DELETE FROM smart_trips WHERE datetime(expires_at) <= datetime('now')").run();
-  return Number(result.changes || 0);
 }
 
 function purgeExpiredItineraries(retentionDays = 7) {
@@ -844,6 +838,5 @@ module.exports = {
   getSmartTripById,
   getSmartTripByToken,
   listSmartTrips,
-  purgeExpiredSmartTrips,
   updateSmartTrip
 };

@@ -15,15 +15,6 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-function displayDate(value) {
-  const text = String(value || "");
-  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)
-    ? `${text.replace(" ", "T")}Z`
-    : text;
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? String(value || "") : date.toLocaleString();
-}
-
 function setStatus(message = "", tone = "") {
   statusNode.textContent = message;
   statusNode.className = `status ${tone}`.trim();
@@ -59,7 +50,7 @@ function renderSmartTrips(records) {
     const pdfUrl = new URL(record.pdfUrl, window.location.origin).toString();
     return `<article class="smart-trip-link-card" data-smart-trip-record="${record.id}">
       <div class="smart-trip-link-main"><span>SMART TRIP</span><h3>${escapeHtml(record.passengerName)}</h3><p>${escapeHtml(destination || "Destination not specified")}</p></div>
-      <div class="smart-trip-link-dates"><div><span>Plan</span><strong>${escapeHtml(record.tripDayCount)} day${record.tripDayCount === 1 ? "" : "s"}</strong></div><div><span>Expires</span><strong>${escapeHtml(displayDate(record.expiresAt))}</strong></div></div>
+      <div class="smart-trip-link-dates"><div><span>Plan</span><strong>${escapeHtml(record.tripDayCount)} day${record.tripDayCount === 1 ? "" : "s"}</strong></div><div><span>Link</span><strong>Active until deleted</strong></div></div>
       ${record.sightseeingStatus !== "ready" ? '<p class="status error">AI Guide needs another attempt.</p>' : '<p class="status ok">AI Guide ready.</p>'}
       <label>Customer link<input type="text" readonly value="${escapeHtml(absoluteUrl)}" data-link-value></label>
       <div class="inline-actions">
