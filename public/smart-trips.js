@@ -67,9 +67,11 @@ function renderSmartTrips(records) {
         <a class="small-button download-link" href="${escapeHtml(pdfUrl)}">PDF</a>
         <button class="small-button" type="button" data-copy-smart-trip>Copy</button>
         ${record.sightseeingStatus !== "ready" ? `<button class="secondary-button" type="button" data-retry-smart-trip="${record.id}">Retry AI Guide</button>` : ""}
+        <button class="secondary-button" type="button" data-generate-qr-ticket="${record.id}">Generate Ticket with QR</button>
         <button class="secondary-button" type="button" data-update-smart-trip="${record.id}">Replace Ticket</button>
         <button class="danger-button" type="button" data-delete-smart-trip="${record.id}">Delete</button>
       </div>
+      <div class="inline-actions" data-qr-ticket-links></div>
     </article>`;
   }).join("");
 
@@ -94,6 +96,25 @@ function renderSmartTrips(records) {
       } catch (error) {
         button.disabled = false;
         setStatus(error.message, "error");
+      }
+    });
+  });
+  list.querySelectorAll("[data-generate-qr-ticket]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      setStatus("Regenerating the original ticket design with the Smart Trip QR code...");
+      try {
+        const payload = await api(`/api/smart-trips/${button.dataset.generateQrTicket}/ticket`, { method: "POST" });
+        const output = button.closest("[data-smart-trip-record]").querySelector("[data-qr-ticket-links]");
+        output.innerHTML = `
+          <a class="small-button download-link" href="${escapeHtml(payload.generated.html.url)}" target="_blank" rel="noreferrer">Open QR Ticket</a>
+          <a class="small-button download-link" href="${escapeHtml(payload.generated.pdf.url)}" target="_blank" rel="noreferrer">Download QR Ticket PDF</a>
+        `;
+        setStatus("QR ticket generated. Its QR code and button open the customer Smart Trip link.", "ok");
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        button.disabled = false;
       }
     });
   });

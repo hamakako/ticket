@@ -57,6 +57,23 @@ function display(value) {
   return escapeHtml(text || "Not specified");
 }
 
+function smartTripAccess(smartTrip = {}) {
+  const url = String(smartTrip.url || "").trim();
+  const qrDataUri = String(smartTrip.qrDataUri || "").trim();
+  if (!url || !qrDataUri) return "";
+  return `
+    <aside class="smart-trip-access">
+      <img src="${escapeHtml(qrDataUri)}" alt="Smart Trip QR code">
+      <div>
+        <span>YOUR SMART TRIP</span>
+        <strong>Scan for your personal trip guide</strong>
+        <p>Flights, hotel, daily plan, maps, and travel services.</p>
+        <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open Smart Trip</a>
+      </div>
+    </aside>
+  `;
+}
+
 function airlineIdentity(segment = {}, fallbackName = "") {
   const airline = meaningful(segment.airline) || meaningful(fallbackName) || "Airline";
   const logo = meaningful(segment.airlineLogo);
@@ -220,6 +237,60 @@ function sharedStyles() {
       align-items: start;
       justify-content: start;
       margin-bottom: 5mm;
+    }
+    .hero.smart-trip-hero {
+      grid-template-columns: minmax(0, 82mm) minmax(0, 1fr);
+      align-items: stretch;
+    }
+    .smart-trip-access {
+      display: grid;
+      grid-template-columns: 27mm minmax(0, 1fr);
+      align-items: center;
+      gap: 4mm;
+      padding: 3mm;
+      border: 1px solid var(--teal);
+      border-radius: 7px;
+      background: #f4fafb;
+    }
+    .smart-trip-access img {
+      width: 27mm;
+      height: 27mm;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+    }
+    .smart-trip-access span {
+      color: var(--muted);
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .smart-trip-access strong {
+      display: block;
+      margin-top: 1mm;
+      color: var(--navy);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .smart-trip-access p {
+      margin: 1mm 0 2mm;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.3;
+    }
+    .smart-trip-access a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 8mm;
+      padding: 1.5mm 4mm;
+      border-radius: 5px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 9.5px;
+      font-weight: 800;
+      text-decoration: none;
     }
     .summary-card,
     .soft-card {
@@ -862,11 +933,12 @@ function generateFlightHtml(data, design = "modern") {
   <section class="page">
     <div class="content">
       ${brandHeader("Flight Itinerary", "English")}
-      <div class="hero">
+      <div class="hero${data.smartTrip ? " smart-trip-hero" : ""}">
         <div class="summary-card">
           <h3>PNR / Booking Reference</h3>
           <div class="reference">${display(data.pnr)}</div>
         </div>
+        ${smartTripAccess(data.smartTrip)}
       </div>
 
       <div class="section">

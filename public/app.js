@@ -57,6 +57,7 @@ const state = {
 
 const smartTripState = {
   recordId: null,
+  smartTripId: null,
   prefill: null,
   hotels: []
 };
@@ -508,6 +509,7 @@ function bindSmartTripDialog() {
     await navigator.clipboard.writeText(input.value);
     setSmartTripStatus("Smart Trip link copied.", "ok");
   });
+  document.querySelector("[data-smart-trip-ticket]").addEventListener("click", generateSmartTripTicket);
   form.addEventListener("submit", createSmartTrip);
 }
 
@@ -525,11 +527,14 @@ async function openSmartTrip(recordId) {
   const dialog = document.querySelector("[data-smart-trip-dialog]");
   const form = document.querySelector("[data-smart-trip-form]");
   smartTripState.recordId = recordId;
+  smartTripState.smartTripId = null;
   smartTripState.prefill = null;
   smartTripState.hotels = [];
   form.reset();
   form.elements.sightseeingRequested.checked = true;
   document.querySelector("[data-smart-trip-result]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-ticket-html]").classList.add("hidden");
+  document.querySelector("[data-smart-trip-ticket-pdf]").classList.add("hidden");
   document.querySelector("[data-smart-trip-summary]").innerHTML = "";
   document.querySelector("[data-smart-trip-detection]").textContent = "Reading the ticket and detecting the destination...";
   document.querySelector("[data-smart-trip-create]").disabled = true;
@@ -660,9 +665,11 @@ async function createSmartTrip(event) {
         customerWhatsapp: form.elements.customerWhatsapp.value,
         notes: form.elements.notes.value,
         sightseeingRequested: form.elements.sightseeingRequested.checked,
+        ticketDesign: state.flight.design,
         hotels: smartTripState.hotels
       })
     });
+    smartTripState.smartTripId = payload.smartTrip.id;
     const absoluteUrl = new URL(payload.smartTrip.url, window.location.origin).toString();
     document.querySelector("[data-smart-trip-url]").value = absoluteUrl;
     document.querySelector("[data-smart-trip-open]").href = absoluteUrl;
@@ -674,6 +681,30 @@ async function createSmartTrip(event) {
     setSmartTripStatus(error.message, "error");
   } finally {
     createButton.disabled = false;
+  }
+}
+
+async function generateSmartTripTicket() {
+  if (!smartTripState.smartTripId) {
+    setSmartTripStatus("Create the Smart Trip link before generating the QR ticket.", "error");
+    return;
+  }
+  const button = document.querySelector("[data-smart-trip-ticket]");
+  button.disabled = true;
+  setSmartTripStatus("Regenerating the same ticket design with the Smart Trip QR code...");
+  try {
+    const payload = await api(`/api/smart-trips/${smartTripState.smartTripId}/ticket`, { method: "POST" });
+    const htmlLink = document.querySelector("[data-smart-trip-ticket-html]");
+    const pdfLink = document.querySelector("[data-smart-trip-ticket-pdf]");
+    htmlLink.href = payload.generated.html.url;
+    pdfLink.href = payload.generated.pdf.url;
+    htmlLink.classList.remove("hidden");
+    pdfLink.classList.remove("hidden");
+    setSmartTripStatus("QR ticket generated. The printed QR and the small ticket button both open this Smart Trip.", "ok");
+  } catch (error) {
+    setSmartTripStatus(error.message, "error");
+  } finally {
+    button.disabled = false;
   }
 }
 

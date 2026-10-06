@@ -69,6 +69,7 @@ const HTML_DIR = path.join(ROOT, "outputs", "html");
 const PDF_DIR = path.join(ROOT, "outputs", "pdf");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
 const PROPOSAL_RETENTION_DAYS = Number(process.env.PROPOSAL_RETENTION_DAYS || 15);
+const TICKET_DESIGNS = new Set(["modern", "executive", "minimal"]);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(HTML_DIR, { recursive: true });
@@ -172,6 +173,16 @@ async function prepareSmartTripGuide(input, passengerName) {
   return { guide, sightseeingStatus };
 }
 
+function normalizeTicketDesign(value) {
+  const design = String(value || "").trim().toLowerCase();
+  return TICKET_DESIGNS.has(design) ? design : "modern";
+}
+
+function publicBaseUrl(req) {
+  const forwardedProtocol = String(req.get("x-forwarded-proto") || "").split(",")[0].trim();
+  return `${forwardedProtocol || req.protocol}://${req.get("host")}`;
+}
+
 function itineraryHtml(type, itinerary, design = "modern") {
   return type === "flight" ? generateFlightHtml(itinerary, design) : generateHotelHtml(itinerary, design);
 }
@@ -184,11 +195,14 @@ function referenceFor(type, itinerary) {
   return type === "flight" ? itinerary.pnr : itinerary.referenceNumber;
 }
 
-function saveHtmlFile(type, itinerary, design = "modern") {
+function saveHtmlFile(type, itinerary, design = "modern", options = {}) {
   const html = itineraryHtml(type, itinerary, design);
-  const fileName = type === "flight"
-    ? buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary))
-    : buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary));
+  const fileName = buildFileName(
+    primaryName(type, itinerary),
+    referenceFor(type, itinerary),
+    "html",
+    options.fileSuffix || ""
+  );
   const filePath = path.join(HTML_DIR, fileName);
 
   fs.writeFileSync(filePath, html, "utf8");
@@ -197,7 +211,7 @@ function saveHtmlFile(type, itinerary, design = "modern") {
     itineraryId: itinerary.id,
     fileName,
     filePath,
-    fileKind: "itinerary-html"
+    fileKind: options.fileKind || "itinerary-html"
   });
 
   return {
@@ -206,9 +220,14 @@ function saveHtmlFile(type, itinerary, design = "modern") {
   };
 }
 
-async function savePdfFile(type, itinerary, design = "modern") {
+async function savePdfFile(type, itinerary, design = "modern", options = {}) {
   const html = itineraryHtml(type, itinerary, design);
-  const fileName = buildFileName(primaryName(type, itinerary), referenceFor(type, itinerary), "pdf");
+  const fileName = buildFileName(
+    primaryName(type, itinerary),
+    referenceFor(type, itinerary),
+    "pdf",
+    options.fileSuffix || ""
+  );
   const filePath = path.join(PDF_DIR, fileName);
   await renderHtmlToPdf(html, filePath);
   addGeneratedFile({
@@ -216,12 +235,49 @@ async function savePdfFile(type, itinerary, design = "modern") {
     itineraryId: itinerary.id,
     fileName,
     filePath,
-    fileKind: "itinerary-pdf"
+    fileKind: options.fileKind || "itinerary-pdf"
   });
   return {
     fileName,
     url: `/generated-pdf/${encodeURIComponent(fileName)}`
   };
+}
+
+async function saveSmartTripTicketFiles(req, trip) {
+  const storedRecord = getFlightItinerary(trip.flightItineraryId);
+  if (!storedRecord) {
+    throw Object.assign(new Error("The original flight record has expired. Upload the current ticket again before generating a QR ticket."), { status: 410 });
+  }
+  const snapshot = trip.flight || {};
+  const itinerary = snapshot.passengers?.length ? {
+    ...storedRecord,
+    pnr: snapshot.pnr || storedRecord.pnr,
+    passengers: snapshot.passengers,
+    segments: snapshot.segments || [],
+    baggage: snapshot.baggage || {},
+    importantNotes: snapshot.importantNotes || []
+  } : storedRecord;
+  const smartTripUrl = `${publicBaseUrl(req)}/smart-trip/${trip.token}`;
+  const qrDataUri = await QRCode.toDataURL(smartTripUrl, {
+    width: 300,
+    margin: 1,
+    errorCorrectionLevel: "M",
+    color: { dark: "#170C79", light: "#FFFFFF" }
+  });
+  const ticket = await withAirlineLogos({
+    ...itinerary,
+    smartTrip: { url: smartTripUrl, qrDataUri }
+  });
+  const design = normalizeTicketDesign(trip.ticketDesign);
+  const html = saveHtmlFile("flight", ticket, design, {
+    fileSuffix: "Smart_Trip",
+    fileKind: "smart-trip-ticket-html"
+  });
+  const pdf = await savePdfFile("flight", ticket, design, {
+    fileSuffix: "Smart_Trip",
+    fileKind: "smart-trip-ticket-pdf"
+  });
+  return { html, pdf, smartTripUrl, design };
 }
 
 function proposalReference() {
@@ -420,8 +476,7 @@ app.get("/smart-trip/:token/pdf", asyncRoute(async (req, res) => {
     return;
   }
 
-  const forwardedProtocol = String(req.get("x-forwarded-proto") || "").split(",")[0].trim();
-  const baseUrl = `${forwardedProtocol || req.protocol}://${req.get("host")}`;
+  const baseUrl = publicBaseUrl(req);
   const fileName = buildFileName(trip.passengerName, trip.destinationCity, "pdf", "Smart_Trip");
   const filePath = path.join(PDF_DIR, `${crypto.randomBytes(8).toString("hex")}-${fileName}`);
   try {
@@ -454,7 +509,8 @@ app.get("/api/smart-trips", (_req, res) => {
     ),
     createdAt: trip.createdAt,
     expiresAt: trip.expiresAt,
-    sightseeingStatus: trip.sightseeingStatus
+    sightseeingStatus: trip.sightseeingStatus,
+    ticketDesign: trip.ticketDesign
   }));
   res.json({ records });
 });
@@ -517,6 +573,24 @@ app.post("/api/smart-trips/:id/retry-guide", asyncRoute(async (req, res) => {
   });
 }));
 
+app.post("/api/smart-trips/:id/ticket", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const trip = getSmartTripById(Number(req.params.id));
+  if (!trip || Date.parse(trip.expiresAt) <= Date.now()) {
+    res.status(404).json({ error: "Smart Trip link not found or expired." });
+    return;
+  }
+  const generated = await saveSmartTripTicketFiles(req, trip);
+  res.json({
+    generated: {
+      html: generated.html,
+      pdf: generated.pdf,
+      smartTripUrl: generated.smartTripUrl,
+      design: generated.design
+    }
+  });
+}));
+
 app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncRoute(async (req, res) => {
   const trip = getSmartTripById(Number(req.params.id));
   if (!trip) {
@@ -567,6 +641,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
       departureDate: input.departureDate,
       departureTime: prefill.departureTime,
       returnDate: input.returnDate,
+      ticketDesign: trip.ticketDesign,
       flight: flightSnapshot(record),
       hotels: input.hotels,
       sightseeingRequested: input.sightseeingRequested,
@@ -838,6 +913,7 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     departureDate: input.departureDate,
     departureTime: prefill.departureTime,
     returnDate: input.returnDate,
+    ticketDesign: normalizeTicketDesign(req.body?.ticketDesign),
     flight: flightSnapshot(record),
     hotels: input.hotels,
     sightseeingRequested: input.sightseeingRequested,
@@ -849,9 +925,11 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
   });
   res.status(201).json({
     smartTrip: {
+      id: trip.id,
       url: `/smart-trip/${trip.token}`,
       expiresAt: trip.expiresAt,
-      sightseeingStatus: trip.sightseeingStatus
+      sightseeingStatus: trip.sightseeingStatus,
+      ticketDesign: trip.ticketDesign
     }
   });
 }));
@@ -915,9 +993,9 @@ app.delete("/api/hotel-itineraries/:id", (req, res) => {
 
 app.use((err, _req, res, _next) => {
   const message = err.message || "Something went wrong.";
-  const status = /GEMINI_API_KEY|Upload|Please|must be|cannot be|must be different|expired|no longer available/i.test(message)
+  const status = Number(err.status) || (/GEMINI_API_KEY|Upload|Please|must be|cannot be|must be different|expired|no longer available/i.test(message)
     ? 400
-    : 500;
+    : 500);
   res.status(status).json({ error: message });
 });
 

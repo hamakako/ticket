@@ -123,6 +123,7 @@ function initDatabase() {
       departure_date TEXT NOT NULL,
       departure_time TEXT NOT NULL DEFAULT '',
       return_date TEXT NOT NULL DEFAULT '',
+      ticket_design TEXT NOT NULL DEFAULT 'modern',
       flight_json TEXT NOT NULL,
       sightseeing_requested INTEGER NOT NULL DEFAULT 1,
       sightseeing_status TEXT NOT NULL DEFAULT 'unavailable',
@@ -164,6 +165,7 @@ function initDatabase() {
   ensureColumn("hotel_itineraries", "photo_attribution_url", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("generated_files", "file_kind", "TEXT NOT NULL DEFAULT 'itinerary-html'");
   ensureColumn("smart_trips", "passenger_first_name_kurdish", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("smart_trips", "ticket_design", "TEXT NOT NULL DEFAULT 'modern'");
 
   return db;
 }
@@ -606,6 +608,7 @@ function mapSmartTrip(row) {
     departureDate: row.departure_date,
     departureTime: row.departure_time,
     returnDate: row.return_date,
+    ticketDesign: row.ticket_design || "modern",
     flight: JSON.parse(row.flight_json || "{}"),
     sightseeingRequested: Boolean(row.sightseeing_requested),
     sightseeingStatus: row.sightseeing_status,
@@ -625,11 +628,11 @@ function createSmartTrip(data) {
     const result = db.prepare(`
       INSERT INTO smart_trips (
         token, flight_itinerary_id, passenger_name, passenger_first_name_kurdish, destination_city, destination_country,
-        customer_whatsapp, notes, departure_date, departure_time, return_date, flight_json,
+        customer_whatsapp, notes, departure_date, departure_time, return_date, ticket_design, flight_json,
         sightseeing_requested, sightseeing_status, sightseeing_json, travel_tip,
         mini_plan_json, expires_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.token,
       data.flightItineraryId,
@@ -642,6 +645,7 @@ function createSmartTrip(data) {
       data.departureDate,
       data.departureTime,
       data.returnDate,
+      data.ticketDesign,
       JSON.stringify(data.flight),
       data.sightseeingRequested ? 1 : 0,
       data.sightseeingStatus,
@@ -695,7 +699,7 @@ function updateSmartTrip(id, data) {
       UPDATE smart_trips SET
         passenger_name = ?, passenger_first_name_kurdish = ?, destination_city = ?, destination_country = ?,
         customer_whatsapp = ?, notes = ?, departure_date = ?, departure_time = ?, return_date = ?,
-        flight_json = ?, sightseeing_requested = ?, sightseeing_status = ?, sightseeing_json = ?,
+        ticket_design = ?, flight_json = ?, sightseeing_requested = ?, sightseeing_status = ?, sightseeing_json = ?,
         travel_tip = ?, mini_plan_json = ?, expires_at = ?
       WHERE id = ?
     `).run(
@@ -708,6 +712,7 @@ function updateSmartTrip(id, data) {
       data.departureDate,
       data.departureTime,
       data.returnDate,
+      data.ticketDesign,
       JSON.stringify(data.flight),
       data.sightseeingRequested ? 1 : 0,
       data.sightseeingStatus,

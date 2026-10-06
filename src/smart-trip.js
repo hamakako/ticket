@@ -181,13 +181,21 @@ function flightSnapshot(itinerary = {}) {
   return {
     pnr: meaningful(itinerary.pnr),
     passengerName: meaningful(itinerary.passengers?.[0]?.fullName),
+    passengers: (itinerary.passengers || []).map((passenger) => ({
+      fullName: meaningful(passenger.fullName),
+      ticketNumber: meaningful(passenger.ticketNumber),
+      passengerType: meaningful(passenger.passengerType),
+      seat: meaningful(passenger.seat)
+    })),
     baggage: {
       checkedBaggage: meaningful(itinerary.baggage?.checkedBaggage),
       cabinBaggage: meaningful(itinerary.baggage?.cabinBaggage)
     },
+    importantNotes: (itinerary.importantNotes || []).map((note) => meaningful(note)).filter(Boolean),
     segments: (itinerary.segments || []).map((segment) => ({
       airline: meaningful(segment.airline),
       flightNumber: meaningful(segment.flightNumber),
+      class: meaningful(segment.class),
       departureAirport: meaningful(segment.departureAirport),
       departureCity: meaningful(segment.departureCity),
       departureDate: meaningful(segment.departureDate),
@@ -198,7 +206,10 @@ function flightSnapshot(itinerary = {}) {
       arrivalTime: meaningful(segment.arrivalTime),
       duration: meaningful(segment.duration),
       layoverAfter: meaningful(segment.layoverAfter),
-      journeyDirection: meaningful(segment.journeyDirection) || "departure"
+      journeyDirection: meaningful(segment.journeyDirection) || "departure",
+      terminal: meaningful(segment.terminal),
+      gate: meaningful(segment.gate),
+      boardingTime: meaningful(segment.boardingTime)
     }))
   };
 }

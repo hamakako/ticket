@@ -27,6 +27,19 @@ test("detects the final outbound city instead of a transit or return city", () =
   assert.equal(prefill.passengerName, "TEST PASSENGER");
 });
 
+test("keeps complete ticket details in the Smart Trip flight snapshot", () => {
+  const { flightSnapshot } = require("../src/smart-trip");
+  const snapshot = flightSnapshot({
+    ...itinerary,
+    passengers: [{ fullName: "TEST PASSENGER", ticketNumber: "2351234567890", passengerType: "Adult", seat: "12A" }],
+    baggage: { checkedBaggage: "23 KG", cabinBaggage: "7 KG" },
+    importantNotes: ["Arrive early"]
+  });
+  assert.equal(snapshot.passengers[0].ticketNumber, "2351234567890");
+  assert.equal(snapshot.segments[0].class, "");
+  assert.deepEqual(snapshot.importantNotes, ["Arrive early"]);
+});
+
 test("uses return date plus 14 days for expiry", () => {
   assert.equal(
     calculateSmartTripExpiry("08/10/2026", [{ checkOutDate: "20/10/2026" }], "01/10/2026"),
