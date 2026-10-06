@@ -267,7 +267,7 @@ function generateSmartTripHtml(trip, options = {}) {
   const firstName = passengerFirstName(trip);
   const outboundSegments = (trip.flight?.segments || []).filter((segment) => segment.journeyDirection !== "return");
   const destinationArrivalDate = outboundSegments.at(-1)?.arrivalDate || trip.departureDate;
-  const tripDayCount = calculateTripDayCount(destinationArrivalDate, trip.returnDate, trip.hotels);
+  const tripDayCount = trip.tripDayCount || calculateTripDayCount(destinationArrivalDate, trip.returnDate, trip.hotels);
   const logoUrl = publicUrl("/assets/mk-logo.png", options.baseUrl);
   const fontUrl = publicUrl("/assets/UniSIRWAN%20Noor%20Regular.ttf", options.baseUrl);
   const pdfUrl = trip.token ? `/smart-trip/${encodeURIComponent(trip.token)}/pdf` : "";

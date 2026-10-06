@@ -79,6 +79,33 @@ test("moves a yearless January return into the year after a December departure",
   assert.equal(input.returnDate, "2027-01-05");
 });
 
+test("defaults one-way Smart Trips to a seven-day plan", () => {
+  const input = normalizeSmartTripInput({ destinationCity: "Istanbul" }, {
+    departureDate: "2026-10-10",
+    arrivalDate: "2026-10-10",
+    returnDate: ""
+  });
+  assert.equal(input.tripDayCount, 7);
+});
+
+test("uses the selected plan length for one-way Smart Trips", () => {
+  const input = normalizeSmartTripInput({ destinationCity: "Istanbul", tripDayCount: 12 }, {
+    departureDate: "2026-10-10",
+    arrivalDate: "2026-10-10",
+    returnDate: ""
+  });
+  assert.equal(input.tripDayCount, 12);
+});
+
+test("uses ticket dates instead of the one-way field for return trips", () => {
+  const input = normalizeSmartTripInput({ destinationCity: "Istanbul", tripDayCount: 30 }, {
+    departureDate: "2026-10-10",
+    arrivalDate: "2026-10-10",
+    returnDate: "2026-10-14"
+  });
+  assert.equal(input.tripDayCount, 5);
+});
+
 test("creates one daily plan day for every inclusive destination date", () => {
   assert.equal(calculateTripDayCount("2026-10-01", "2026-10-10"), 10);
   assert.equal(calculateTripDayCount("2026-10-30", "2026-11-02"), 4);
@@ -119,6 +146,7 @@ test("renders branded flight, hotel, sightseeing, services, and countdown sectio
     departureDate: "01/10/2026",
     departureTime: "10:00",
     returnDate: "08/10/2026",
+    tripDayCount: 8,
     flight: { pnr: "ABC123", segments: itinerary.segments },
     hotels: [{ hotelName: "Test Hotel", hotelCity: "Trabzon", hotelAddress: "Center", checkInDate: "2026-10-01", checkOutDate: "2026-10-08", hotelPhone: "", notes: "" }],
     sightseeingRequested: true,
@@ -158,6 +186,7 @@ test("renders the Kurdish fallback without breaking the Smart Trip when AI is un
     departureDate: "01/10/2026",
     departureTime: "10:00",
     returnDate: "",
+    tripDayCount: 7,
     flight: { pnr: "ABC123", segments: itinerary.segments.slice(0, 1) },
     hotels: [],
     sightseeingRequested: true,

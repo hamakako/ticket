@@ -220,6 +220,11 @@
           Customer WhatsApp number
           <input type="tel" name="customerWhatsapp" maxlength="40" placeholder="Optional">
         </label>
+        <label class="hidden" data-one-way-plan-days>
+          Plan days
+          <input type="number" name="tripDayCount" min="1" max="60" value="7" inputmode="numeric">
+          <small class="field-hint">One-way ticket: choose how many days the Smart Trip plan should cover. Default is 7 days.</small>
+        </label>
         <label class="full-span">
           Notes
           <textarea name="notes" maxlength="1000" placeholder="Optional trip notes"></textarea>
@@ -259,6 +264,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=20261006-multilingual-first-name"></script>
+  <script src="/app.js?v=20261006-one-way-plan-days"></script>
 </body>
 </html>

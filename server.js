@@ -498,7 +498,7 @@ app.get("/api/smart-trips", (_req, res) => {
     destinationCountry: trip.destinationCountry,
     url: `/smart-trip/${trip.token}`,
     pdfUrl: `/smart-trip/${trip.token}/pdf`,
-    tripDayCount: calculateTripDayCount(
+    tripDayCount: trip.tripDayCount || calculateTripDayCount(
       trip.flight?.segments?.findLast?.((segment) => segment.journeyDirection !== "return")?.arrivalDate || trip.departureDate,
       trip.returnDate,
       trip.hotels
@@ -531,7 +531,7 @@ app.post("/api/smart-trips/:id/retry-guide", asyncRoute(async (req, res) => {
   const outboundSegments = (trip.flight?.segments || [])
     .filter((segment) => segment.journeyDirection !== "return");
   const arrivalDate = outboundSegments.at(-1)?.arrivalDate || trip.departureDate;
-  const tripDayCount = calculateTripDayCount(arrivalDate, trip.returnDate, trip.hotels);
+  const tripDayCount = trip.tripDayCount || calculateTripDayCount(arrivalDate, trip.returnDate, trip.hotels);
   const { guide, sightseeingStatus } = await prepareSmartTripGuide({
     destinationCity: trip.destinationCity,
     destinationCountry: trip.destinationCountry,
@@ -647,6 +647,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
       customerWhatsapp: trip.customerWhatsapp,
       notes: trip.notes,
       sightseeingRequested: trip.sightseeingRequested,
+      tripDayCount: trip.tripDayCount || 7,
       hotels: sameDestination ? trip.hotels : []
     }, prefill);
     const passengerName = prefill.passengerName || trip.passengerName;
@@ -662,6 +663,7 @@ app.post("/api/smart-trips/:id/update-ticket", upload.single("document"), asyncR
       departureDate: input.departureDate,
       departureTime: prefill.departureTime,
       returnDate: input.returnDate,
+      tripDayCount: input.tripDayCount,
       ticketDesign: trip.ticketDesign,
       flight: flightSnapshot(record),
       hotels: input.hotels,
@@ -934,6 +936,7 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
     departureDate: input.departureDate,
     departureTime: prefill.departureTime,
     returnDate: input.returnDate,
+    tripDayCount: input.tripDayCount,
     ticketDesign: normalizeTicketDesign(req.body?.ticketDesign),
     flight: flightSnapshot(record),
     hotels: input.hotels,
@@ -949,6 +952,7 @@ app.post("/api/flight-itineraries/:id/smart-trips", asyncRoute(async (req, res) 
       id: trip.id,
       url: `/smart-trip/${trip.token}`,
       sightseeingStatus: trip.sightseeingStatus,
+      tripDayCount: trip.tripDayCount,
       ticketDesign: trip.ticketDesign,
       hotelCount: trip.hotels.length,
       passengerFirstNameEnglish: trip.passengerFirstNameEnglish

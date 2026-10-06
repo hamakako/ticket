@@ -124,6 +124,7 @@ function initDatabase() {
       departure_date TEXT NOT NULL,
       departure_time TEXT NOT NULL DEFAULT '',
       return_date TEXT NOT NULL DEFAULT '',
+      trip_day_count INTEGER NOT NULL DEFAULT 0,
       ticket_design TEXT NOT NULL DEFAULT 'modern',
       flight_json TEXT NOT NULL,
       sightseeing_requested INTEGER NOT NULL DEFAULT 1,
@@ -168,6 +169,7 @@ function initDatabase() {
   ensureColumn("smart_trips", "passenger_first_name_kurdish", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("smart_trips", "passenger_first_name_english", "TEXT NOT NULL DEFAULT ''");
   ensureColumn("smart_trips", "ticket_design", "TEXT NOT NULL DEFAULT 'modern'");
+  ensureColumn("smart_trips", "trip_day_count", "INTEGER NOT NULL DEFAULT 0");
 
   return db;
 }
@@ -611,6 +613,7 @@ function mapSmartTrip(row) {
     departureDate: row.departure_date,
     departureTime: row.departure_time,
     returnDate: row.return_date,
+    tripDayCount: Number(row.trip_day_count || 0),
     ticketDesign: row.ticket_design || "modern",
     flight: JSON.parse(row.flight_json || "{}"),
     sightseeingRequested: Boolean(row.sightseeing_requested),
@@ -633,9 +636,9 @@ function createSmartTrip(data) {
         token, flight_itinerary_id, passenger_name, passenger_first_name_kurdish, passenger_first_name_english, destination_city, destination_country,
         customer_whatsapp, notes, departure_date, departure_time, return_date, ticket_design, flight_json,
         sightseeing_requested, sightseeing_status, sightseeing_json, travel_tip,
-        mini_plan_json, expires_at
+        mini_plan_json, expires_at, trip_day_count
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       data.token,
       data.flightItineraryId,
@@ -656,7 +659,8 @@ function createSmartTrip(data) {
       JSON.stringify(data.sightseeing),
       data.travelTip,
       JSON.stringify(data.miniPlan),
-      data.expiresAt
+      data.expiresAt,
+      data.tripDayCount
     );
     const smartTripId = Number(result.lastInsertRowid);
     const hotelStmt = db.prepare(`
@@ -704,7 +708,7 @@ function updateSmartTrip(id, data) {
         passenger_name = ?, passenger_first_name_kurdish = ?, passenger_first_name_english = ?, destination_city = ?, destination_country = ?,
         customer_whatsapp = ?, notes = ?, departure_date = ?, departure_time = ?, return_date = ?,
         ticket_design = ?, flight_json = ?, sightseeing_requested = ?, sightseeing_status = ?, sightseeing_json = ?,
-        travel_tip = ?, mini_plan_json = ?, expires_at = ?
+        travel_tip = ?, mini_plan_json = ?, expires_at = ?, trip_day_count = ?
       WHERE id = ?
     `).run(
       data.passengerName,
@@ -725,6 +729,7 @@ function updateSmartTrip(id, data) {
       data.travelTip,
       JSON.stringify(data.miniPlan),
       data.expiresAt,
+      data.tripDayCount,
       id
     );
     if (!result.changes) throw new Error("Smart Trip link not found.");

@@ -535,6 +535,8 @@ async function openSmartTrip(recordId) {
   smartTripState.hotels = [];
   form.reset();
   form.elements.sightseeingRequested.checked = true;
+  form.elements.tripDayCount.value = "7";
+  document.querySelector("[data-one-way-plan-days]").classList.add("hidden");
   document.querySelector("[data-smart-trip-result]").classList.add("hidden");
   document.querySelector("[data-smart-trip-ticket-html]").classList.add("hidden");
   document.querySelector("[data-smart-trip-ticket-pdf]").classList.add("hidden");
@@ -554,6 +556,9 @@ async function openSmartTrip(recordId) {
     form.elements.passengerFirstName.value = payload.prefill.passengerFirstName || "";
     form.elements.destinationCity.value = payload.prefill.destinationCity || "";
     form.elements.destinationCountry.value = payload.prefill.destinationCountry || "";
+    const isOneWay = !payload.prefill.returnDate;
+    document.querySelector("[data-one-way-plan-days]").classList.toggle("hidden", !isOneWay);
+    form.elements.tripDayCount.required = isOneWay;
     document.querySelector("[data-smart-trip-detection]").textContent = payload.detection.message;
     renderSmartTripSummary(payload.prefill);
     document.querySelector("[data-smart-trip-create]").disabled = false;
@@ -672,6 +677,7 @@ async function createSmartTrip(event) {
         destinationCountry: form.elements.destinationCountry.value,
         customerWhatsapp: form.elements.customerWhatsapp.value,
         notes: form.elements.notes.value,
+        tripDayCount: Number(form.elements.tripDayCount.value || 7),
         sightseeingRequested: form.elements.sightseeingRequested.checked,
         ticketDesign: state.flight.design,
         hotels: smartTripState.hotels

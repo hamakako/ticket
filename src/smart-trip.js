@@ -162,6 +162,10 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
   const arrivalDate = isoDate(prefill.arrivalDate, departureTimestamp) || departureDate;
   const returnDate = isoDate(prefill.returnDate, departureTimestamp);
   const hotels = normalizeHotels(value.hotels, destinationCity, departureTimestamp);
+  const requestedDayCount = Number(value.tripDayCount);
+  const oneWayDayCount = Number.isInteger(requestedDayCount) && requestedDayCount >= 1 && requestedDayCount <= 60
+    ? requestedDayCount
+    : 7;
 
   return {
     passengerFirstName: normalizePassengerFirstName(value.passengerFirstName, prefill.passengerName),
@@ -174,7 +178,9 @@ function normalizeSmartTripInput(value = {}, prefill = {}, now = Date.now()) {
     arrivalDate: arrivalDate || limitedText(prefill.arrivalDate, 40),
     returnDate: returnDate || limitedText(prefill.returnDate, 40),
     hotels,
-    tripDayCount: calculateTripDayCount(arrivalDate || departureDate, returnDate, hotels, departureTimestamp)
+    tripDayCount: returnDate
+      ? calculateTripDayCount(arrivalDate || departureDate, returnDate, hotels, departureTimestamp)
+      : oneWayDayCount
   };
 }
 
