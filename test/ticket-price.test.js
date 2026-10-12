@@ -36,11 +36,14 @@ function request() {
 }
 
 test("normalizes a customer flight-price quotation", () => {
-  const quote = normalizeTicketPriceRequest(request());
+  const input = request();
+  input.options[0].itinerary.segments[0].layoverAfter = "Not applicable";
+  const quote = normalizeTicketPriceRequest(input);
   assert.equal(quote.customerName, "Hoshyar Ahmed");
   assert.equal(quote.options[0].price, 1250.5);
   assert.equal(quote.options[0].currency, "USD");
   assert.equal(quote.options[0].itinerary.segments[0].arrivalAirport, "IST");
+  assert.equal(quote.options[0].itinerary.segments[0].layoverAfter, "Not specified");
 });
 
 test("renders branded comparison and option detail pages", () => {

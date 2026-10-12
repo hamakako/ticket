@@ -2,6 +2,7 @@ const NOT_SPECIFIED = "Not specified";
 const { enrichFlightTimings } = require("./flight-timings");
 
 const financialPattern = /\b(price|fare|amount|total|paid|payment|invoice|receipt|fee|cost|charge|currency)\b|[$€£]|(?:USD|EUR|GBP|IQD|AED|SAR|TRY)\b/i;
+const missingValuePattern = /^(?:not specified|not applicable|n\/?a|none|unknown|unavailable|[-—])$/i;
 
 function isBlank(value) {
   return value === undefined || value === null || String(value).trim() === "";
@@ -11,6 +12,7 @@ function cleanText(value) {
   if (isBlank(value)) return NOT_SPECIFIED;
   const text = String(value).replace(/\s+/g, " ").trim();
   if (!text) return NOT_SPECIFIED;
+  if (missingValuePattern.test(text)) return NOT_SPECIFIED;
   return financialPattern.test(text) ? NOT_SPECIFIED : text;
 }
 
