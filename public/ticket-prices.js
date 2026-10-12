@@ -23,7 +23,8 @@ function blankSegment() {
     arrivalDate: "",
     arrivalTime: "",
     duration: "",
-    layoverAfter: ""
+    layoverAfter: "",
+    journeyDirection: ""
   };
 }
 
@@ -70,8 +71,6 @@ function normalizeExtractedItinerary(data = {}) {
 function extractionStatus(itinerary, sourceLabel) {
   const requiredFields = [
     "airline",
-    "flightNumber",
-    "class",
     "departureAirport",
     "departureCity",
     "departureDate",
@@ -123,7 +122,7 @@ function renderOptions() {
 
       <div class="ticket-price-core-grid">
         ${input("Option title", "title", option.title, optionIndex, 'maxlength="80" placeholder="Example: Best direct flight"')}
-        <label>Ticket price<input type="text" inputmode="decimal" value="${escapeHtml(option.price)}" data-option-index="${optionIndex}" data-option-field="price" placeholder="0.00"></label>
+        <label>Price for Option ${optionIndex + 1}<input type="text" inputmode="decimal" value="${escapeHtml(option.price)}" data-option-index="${optionIndex}" data-option-field="price" placeholder="0.00"></label>
         <label>Currency<select data-option-index="${optionIndex}" data-option-field="currency">
           ${["USD", "EUR", "GBP", "TRY", "IQD"].map((currency) => `<option value="${currency}" ${option.currency === currency ? "selected" : ""}>${currency}</option>`).join("")}
         </select></label>
@@ -145,15 +144,15 @@ function renderOptions() {
 
       <div class="ticket-price-editor">
         <div class="ticket-price-editor-heading">
-          <div><p class="eyebrow">Review Details</p><h4>Editable flight information</h4></div>
-          <button class="secondary-button small-button" type="button" data-add-segment="${optionIndex}">+ Add Flight</button>
+          <div><p class="eyebrow">One Priced Option</p><h4>Route and transit segments</h4><small>All segments below use the single Option ${optionIndex + 1} price above.</small></div>
+          <button class="secondary-button small-button" type="button" data-add-segment="${optionIndex}">+ Add Transit Segment</button>
         </div>
         <div class="ticket-price-segments">
           ${option.itinerary.segments.map((segment, segmentIndex) => `
             <section class="ticket-price-segment">
-              <div class="ticket-price-segment-heading"><strong>Flight ${segmentIndex + 1}</strong>${option.itinerary.segments.length > 1 ? `<button class="danger-button" type="button" data-remove-segment="${optionIndex}:${segmentIndex}">Remove</button>` : ""}</div>
+              <div class="ticket-price-segment-heading"><strong>${option.itinerary.segments.length > 1 ? (segment.journeyDirection === "return" ? "Return route" : segmentIndex === 0 ? "Departure route" : "Connecting route") : "Route details"}</strong>${option.itinerary.segments.length > 1 ? `<button class="danger-button" type="button" data-remove-segment="${optionIndex}:${segmentIndex}">Remove</button>` : ""}</div>
               <details class="ticket-price-segment-ai" data-segment-ai="${optionIndex}:${segmentIndex}">
-                <summary>Extract this flight with AI</summary>
+                <summary>Extract this route segment with AI</summary>
                 <div class="ticket-price-segment-ai-grid">
                   <div>
                     <label for="segment-file-${optionIndex}-${segmentIndex}">Upload screenshot, image, or PDF</label>
@@ -169,8 +168,6 @@ function renderOptions() {
               </details>
               <div class="ticket-price-segment-grid">
                 ${segmentInput("Airline", "airline", segment.airline, optionIndex, segmentIndex, 'placeholder="Airline name"')}
-                ${segmentInput("Flight number", "flightNumber", segment.flightNumber, optionIndex, segmentIndex, 'placeholder="TK317"')}
-                ${segmentInput("Cabin / class", "class", segment.class, optionIndex, segmentIndex, 'placeholder="Economy"')}
                 ${segmentInput("Duration", "duration", segment.duration, optionIndex, segmentIndex, 'placeholder="2h 45m"')}
                 ${segmentInput("Departure airport", "departureAirport", segment.departureAirport, optionIndex, segmentIndex, 'placeholder="EBL"')}
                 ${segmentInput("Departure city", "departureCity", segment.departureCity, optionIndex, segmentIndex, 'placeholder="Erbil"')}
@@ -190,6 +187,7 @@ function renderOptions() {
         </div>
         <label class="ticket-price-notes">Option notes<textarea maxlength="500" data-option-index="${optionIndex}" data-option-field="notes" placeholder="Optional price or fare notes">${escapeHtml(option.notes)}</textarea></label>
       </div>
+      ${optionIndex === state.options.length - 1 ? `<div class="ticket-price-option-footer"><span>Need a different route with a different price?</span><button class="secondary-button" type="button" data-add-option-inline>+ Add Another Priced Option</button></div>` : ""}
     </article>`).join("");
 }
 
@@ -276,11 +274,11 @@ async function extractSegmentFile(optionIndex, segmentIndex) {
     setOptionStatus(optionIndex, "Please choose a screenshot, image, or PDF for this flight first.", "error");
     return;
   }
-  setOptionStatus(optionIndex, `Gemini is extracting Flight ${segmentIndex + 1}...`);
+  setOptionStatus(optionIndex, `Gemini is extracting transit segment ${segmentIndex + 1}...`);
   const formData = new FormData();
   formData.append("document", file);
   const body = await api("/api/ticket-prices/extract", { method: "POST", body: formData });
-  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Flight ${segmentIndex + 1}`);
+  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Transit segment ${segmentIndex + 1}`);
 }
 
 async function extractSegmentText(optionIndex, segmentIndex) {
@@ -290,13 +288,23 @@ async function extractSegmentText(optionIndex, segmentIndex) {
     setOptionStatus(optionIndex, "Please paste the new flight or route first.", "error");
     return;
   }
-  setOptionStatus(optionIndex, `Gemini is extracting Flight ${segmentIndex + 1}...`);
+  setOptionStatus(optionIndex, `Gemini is extracting transit segment ${segmentIndex + 1}...`);
   const body = await api("/api/ticket-prices/extract-text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text })
   });
-  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Flight ${segmentIndex + 1}`);
+  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Transit segment ${segmentIndex + 1}`);
+}
+
+function addPricedOption() {
+  if (state.options.length >= MAX_OPTIONS) {
+    setGenerateStatus(`A quotation can contain a maximum of ${MAX_OPTIONS} options.`, "error");
+    return;
+  }
+  state.options.push(blankOption(state.options.length));
+  renderOptions();
+  document.querySelector(`[data-option-card="${state.options.length - 1}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function updateStateFromField(target) {
@@ -324,6 +332,10 @@ optionsRoot.addEventListener("click", async (event) => {
         if (!option.title || /^Option \d+$/.test(option.title)) option.title = `Option ${index + 1}`;
       });
       renderOptions();
+      return;
+    }
+    if (button.dataset.addOptionInline !== undefined) {
+      addPricedOption();
       return;
     }
     if (button.dataset.addSegment !== undefined) {
@@ -364,18 +376,12 @@ optionsRoot.addEventListener("click", async (event) => {
 });
 
 document.querySelector("[data-add-option]").addEventListener("click", () => {
-  if (state.options.length >= MAX_OPTIONS) {
-    setGenerateStatus(`A quotation can contain a maximum of ${MAX_OPTIONS} options.`, "error");
-    return;
-  }
-  state.options.push(blankOption(state.options.length));
-  renderOptions();
-  document.querySelector(`[data-option-card="${state.options.length - 1}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  addPricedOption();
 });
 
 generateButton.addEventListener("click", async () => {
   downloads.classList.add("hidden");
-  setGenerateStatus("Creating the branded HTML and PDF quotation...");
+  setGenerateStatus("Creating the branded HTML, PDF, and PNG quotation...");
   generateButton.disabled = true;
   try {
     const body = await api("/api/ticket-prices/generate", {
@@ -388,6 +394,9 @@ generateButton.addEventListener("click", async () => {
     document.querySelector("[data-download-html]").href = generated.html.url;
     document.querySelector("[data-open-pdf]").href = generated.pdf.url;
     document.querySelector("[data-download-pdf]").href = generated.pdf.url;
+    document.querySelector("[data-png-downloads]").innerHTML = (generated.pngs || []).map((png, index) => (
+      `<a class="download-link" href="${escapeHtml(png.url)}" download>Download PNG${generated.pngs.length > 1 ? ` Page ${index + 1}` : ""}</a>`
+    )).join("");
     downloads.classList.remove("hidden");
     setGenerateStatus(`Quotation ${generated.reference} is ready.`, "ok");
   } catch (error) {

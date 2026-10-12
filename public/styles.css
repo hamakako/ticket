@@ -149,6 +149,12 @@ button:disabled {
   max-width: 620px;
 }
 
+.ticket-price-customer label small,
+.ticket-price-editor-heading small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .ticket-price-options-heading,
 .ticket-price-option-heading,
 .ticket-price-editor-heading,
@@ -310,6 +316,19 @@ button:disabled {
   min-height: 76px;
 }
 
+.ticket-price-option-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .ticket-price-actions {
   position: sticky;
   top: 16px;
@@ -318,6 +337,10 @@ button:disabled {
 .ticket-price-actions > button {
   width: 100%;
   margin-top: 14px;
+}
+
+.ticket-price-png-downloads {
+  display: contents;
 }
 
 .ticket-price-note,
@@ -1088,7 +1111,8 @@ label textarea {
 
   .ticket-price-options-heading,
   .ticket-price-option-heading,
-  .ticket-price-editor-heading {
+  .ticket-price-editor-heading,
+  .ticket-price-option-footer {
     align-items: stretch;
     flex-direction: column;
   }

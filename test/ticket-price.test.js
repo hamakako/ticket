@@ -56,6 +56,27 @@ test("renders branded comparison and option detail pages", () => {
   assert.match(html, /EBL/);
   assert.match(html, /IST/);
   assert.match(html, /Price and availability can change until ticketing/);
+  assert.doesNotMatch(html, /TK317/);
+  assert.doesNotMatch(html, /CABIN \/ CLASS/);
+  assert.doesNotMatch(html, />Economy</);
+});
+
+test("allows a general quotation without a customer name", () => {
+  const input = request();
+  input.customerName = "";
+  const quote = normalizeTicketPriceRequest(input);
+  const html = generateTicketPriceHtml(quote);
+  assert.equal(quote.customerName, "");
+  assert.match(html, /Ticket price comparison/);
+  assert.match(html, /Flight Quotation - MK Business and Travel/);
+});
+
+test("keeps a separate price for every ticket option", () => {
+  const input = request();
+  input.options.push({ ...structuredClone(input.options[0]), title: "Option 2", price: "300", currency: "EUR" });
+  const html = generateTicketPriceHtml(normalizeTicketPriceRequest(input));
+  assert.match(html, /\$1,250\.50/);
+  assert.match(html, /€300\.00/);
 });
 
 test("continues long multi-flight options on additional A4 pages", () => {
@@ -67,6 +88,9 @@ test("continues long multi-flight options on additional A4 pages", () => {
   const html = generateTicketPriceHtml(normalizeTicketPriceRequest(input));
   assert.match(html, /Journey schedule · 1 of 2/);
   assert.match(html, /Journey schedule · 2 of 2/);
+  assert.match(html, /DEPARTURE ROUTE/);
+  assert.match(html, /CONNECTING ROUTE/);
+  assert.doesNotMatch(html, /FLIGHT 2/);
   assert.equal((html.match(/class="page /g) || []).length, 3);
 });
 

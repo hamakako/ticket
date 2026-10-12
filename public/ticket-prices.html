@@ -30,7 +30,7 @@
     <section class="ticket-price-intro">
       <p class="eyebrow">Customer Quotation</p>
       <h2>Compare ticket prices</h2>
-      <p>Enter the customer name, extract each ticket option from a screenshot, PDF, or copied text, then review the details and create one branded HTML and PDF quotation.</p>
+      <p>Optionally enter the customer name, extract each priced ticket option from a screenshot, PDF, or copied text, then create a branded HTML, PDF, and PNG quotation.</p>
     </section>
 
     <section class="ticket-price-layout">
@@ -40,12 +40,12 @@
             <span>1</span>
             <div>
               <p>Customer</p>
-              <h3>Who is this quotation for?</h3>
+              <h3>Add a customer name if needed</h3>
             </div>
           </div>
           <label>
-            Customer name
-            <input type="text" maxlength="120" autocomplete="name" data-customer-name placeholder="Enter the customer name">
+            Customer name <small>(optional)</small>
+            <input type="text" maxlength="120" autocomplete="name" data-customer-name placeholder="Leave empty for a general quotation">
           </label>
         </div>
 
@@ -54,7 +54,7 @@
             <p class="eyebrow">Flight Options</p>
             <h2>Add and compare tickets</h2>
           </div>
-          <button class="secondary-button" type="button" data-add-option>+ Add Option</button>
+          <button class="secondary-button" type="button" data-add-option>+ Add Priced Option</button>
         </div>
 
         <div class="ticket-price-options" data-options></div>
@@ -68,20 +68,21 @@
             <h3>Create customer quotation</h3>
           </div>
         </div>
-        <p class="ticket-price-note">The first page compares every option and price. Each option then receives its own branded detail page.</p>
-        <button type="button" data-generate-prices>Generate HTML &amp; PDF</button>
+        <p class="ticket-price-note">The first page compares every option and its own price. Transit segments remain together inside one option.</p>
+        <button type="button" data-generate-prices>Generate HTML, PDF &amp; PNG</button>
         <p class="status" data-generate-status aria-live="polite"></p>
         <div class="ticket-price-downloads hidden" data-price-downloads>
           <a class="download-link" data-open-html href="#" target="_blank" rel="noreferrer">Open HTML</a>
           <a class="download-link" data-download-html href="#" download>Download HTML</a>
           <a class="download-link" data-open-pdf href="#" target="_blank" rel="noreferrer">Open PDF</a>
           <a class="download-link" data-download-pdf href="#" download>Download PDF</a>
+          <div class="ticket-price-png-downloads" data-png-downloads></div>
         </div>
         <p class="ticket-price-retention">Generated quotation files are automatically removed after 7 days.</p>
       </aside>
     </section>
   </main>
 
-  <script src="/ticket-prices.js?v=20261012-1"></script>
+  <script src="/ticket-prices.js?v=20261012-2"></script>
 </body>
 </html>

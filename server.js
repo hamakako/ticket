@@ -39,7 +39,7 @@ const {
 const { enrichHotelData } = require("./src/hotel-enrichment");
 const { bookingLinks, getSelection, searchAirports, searchFlights } = require("./src/ignav");
 const { airlineLogo, normalizedCode, withAirlineLogos } = require("./src/airline-logos");
-const { renderHtmlToPdf } = require("./src/pdf-generator");
+const { renderHtmlToPdf, renderHtmlToPngPages } = require("./src/pdf-generator");
 const { enrichSightseeingImages } = require("./src/place-images");
 const { normalizeFlightData, normalizeHotelData } = require("./src/schema");
 const {
@@ -67,6 +67,7 @@ const UPLOAD_DIR = path.join(ROOT, "uploads", "originals");
 const OUTPUT_DIR = path.join(ROOT, "outputs");
 const HTML_DIR = path.join(ROOT, "outputs", "html");
 const PDF_DIR = path.join(ROOT, "outputs", "pdf");
+const PNG_DIR = path.join(ROOT, "outputs", "png");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS || 7);
 const PROPOSAL_RETENTION_DAYS = Number(process.env.PROPOSAL_RETENTION_DAYS || 15);
 const PERMANENT_SMART_TRIP_EXPIRY = "9999-12-31T23:59:59.000Z";
@@ -75,6 +76,7 @@ const TICKET_DESIGNS = new Set(["modern", "executive", "minimal"]);
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(HTML_DIR, { recursive: true });
 fs.mkdirSync(PDF_DIR, { recursive: true });
+fs.mkdirSync(PNG_DIR, { recursive: true });
 initDatabase();
 
 app.use(express.json({ limit: "4mb" }));
@@ -89,6 +91,11 @@ app.use("/generated", express.static(HTML_DIR, {
 app.use("/generated-pdf", express.static(PDF_DIR, {
   setHeaders(res) {
     res.setHeader("Content-Type", "application/pdf");
+  }
+}));
+app.use("/generated-png", express.static(PNG_DIR, {
+  setHeaders(res) {
+    res.setHeader("Content-Type", "image/png");
   }
 }));
 app.use(express.static(path.join(ROOT, "public")));
@@ -314,24 +321,34 @@ async function saveTicketPriceFiles(input) {
   })));
 
   const html = generateTicketPriceHtml(quote);
-  const htmlName = buildFileName(quote.customerName, quote.reference, "html", "Ticket_Prices");
-  const pdfName = buildFileName(quote.customerName, quote.reference, "pdf", "Ticket_Prices");
+  const fileOwner = quote.customerName || "Customer";
+  const htmlName = buildFileName(fileOwner, quote.reference, "html", "Ticket_Prices");
+  const pdfName = buildFileName(fileOwner, quote.reference, "pdf", "Ticket_Prices");
   const htmlPath = path.join(HTML_DIR, htmlName);
   const pdfPath = path.join(PDF_DIR, pdfName);
+  const pngs = [];
 
   try {
     fs.writeFileSync(htmlPath, html, "utf8");
     await renderHtmlToPdf(html, pdfPath);
+    await renderHtmlToPngPages(html, (pageNumber) => {
+      const fileName = buildFileName(fileOwner, quote.reference, "png", `Ticket_Prices_Page_${pageNumber}`);
+      const filePath = path.join(PNG_DIR, fileName);
+      pngs.push({ fileName, filePath, url: `/generated-png/${encodeURIComponent(fileName)}` });
+      return filePath;
+    });
   } catch (error) {
     deleteGeneratedFile(htmlPath);
     deleteGeneratedFile(pdfPath);
+    pngs.forEach((png) => deleteGeneratedFile(png.filePath));
     throw error;
   }
 
   return {
     reference: quote.reference,
     html: { fileName: htmlName, url: `/generated/${encodeURIComponent(htmlName)}` },
-    pdf: { fileName: pdfName, url: `/generated-pdf/${encodeURIComponent(pdfName)}` }
+    pdf: { fileName: pdfName, url: `/generated-pdf/${encodeURIComponent(pdfName)}` },
+    pngs: pngs.map(({ fileName, url }) => ({ fileName, url }))
   };
 }
 
@@ -486,7 +503,7 @@ function runExpiredCleanup() {
     generatedFiles.forEach(deleteGeneratedFile);
     sourceFiles.forEach(deleteSourceFile);
     const oldOriginalUploads = cleanupOldOriginalUploads();
-    const oldUntrackedOutputs = cleanupOldFilesIn(HTML_DIR) + cleanupOldFilesIn(PDF_DIR);
+    const oldUntrackedOutputs = cleanupOldFilesIn(HTML_DIR) + cleanupOldFilesIn(PDF_DIR) + cleanupOldFilesIn(PNG_DIR);
 
     const removedRecords = result.flightCount + result.hotelCount;
     if (removedRecords || generatedFiles.length || sourceFiles.length || oldOriginalUploads || oldUntrackedOutputs) {

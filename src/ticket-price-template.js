@@ -65,10 +65,6 @@ function datesSummary(itinerary) {
   return last && last !== first ? `${first} – ${last}` : first;
 }
 
-function cabinSummary(itinerary) {
-  return [...new Set((itinerary.segments || []).map((segment) => meaningful(segment.class)).filter(Boolean))].join(" / ");
-}
-
 function bilingualLabel(english, kurdish) {
   return `<span class="label-en">${escapeHtml(english)}</span><span class="label-ku" lang="ku" dir="rtl">${escapeHtml(kurdish)}</span>`;
 }
@@ -95,10 +91,11 @@ function footer(reference) {
 }
 
 function customerHero(quote, pageIndex, pageCount) {
+  const hasCustomer = Boolean(meaningful(quote.customerName));
   return `<div class="hero">
     <div class="hero-customer">
-      ${bilingualLabel("PREPARED FOR", "ئامادەکراوە بۆ")}
-      <h2>${escapeHtml(quote.customerName)}</h2>
+      ${hasCustomer ? bilingualLabel("PREPARED FOR", "ئامادەکراوە بۆ") : bilingualLabel("FLIGHT OPTIONS", "هەڵبژاردەکانی فڕین")}
+      <h2>${escapeHtml(hasCustomer ? quote.customerName : "Ticket price comparison")}</h2>
       <p>Selected flight options, clearly compared for your journey.</p>
       <p class="ku-copy" lang="ku" dir="rtl">هەڵبژاردەکانی فڕین و نرخەکان بە ڕوونی بۆ گەشتەکەت بەراورد کراون.</p>
     </div>
@@ -116,7 +113,7 @@ function comparisonCard(option, index) {
     <div class="comparison-main">
       <div class="comparison-title"><h4>${escapeHtml(option.title)}</h4><span>${escapeHtml(airlinesSummary(option.itinerary) || "Airline pending")}</span></div>
       <strong>${escapeHtml(routeSummary(option.itinerary))}</strong>
-      <small>${escapeHtml(datesSummary(option.itinerary))} · ${escapeHtml(cabinSummary(option.itinerary) || "Cabin pending")}</small>
+      <small>${escapeHtml(datesSummary(option.itinerary))}</small>
     </div>
     <div class="comparison-price">
       ${bilingualLabel("TOTAL PRICE", "نرخی کۆتایی")}
@@ -158,21 +155,28 @@ function summaryPages(quote) {
 
 function airlineIdentity(segment) {
   const airline = meaningful(segment.airline) || "Airline pending";
-  const flightMeta = [meaningful(segment.flightNumber), meaningful(segment.class)].filter(Boolean).join(" · ");
   return `<div class="airline">
     ${segment.airlineLogo ? `<img src="${escapeHtml(segment.airlineLogo)}" alt="${escapeHtml(airline)} logo">` : `<span>${escapeHtml((meaningful(segment.carrierCode) || airline).slice(0, 2).toUpperCase())}</span>`}
-    <div><strong>${escapeHtml(airline)}</strong><small>${escapeHtml(flightMeta || "Flight details pending")}</small></div>
+    <div><strong>${escapeHtml(airline)}</strong></div>
   </div>`;
 }
 
-function segmentCard(segment, flightNumber) {
+function segmentCard(segment, segmentNumber, segmentCount) {
   const departurePlace = meaningful(segment.departureAirport) || meaningful(segment.departureCity) || "From";
   const arrivalPlace = meaningful(segment.arrivalAirport) || meaningful(segment.arrivalCity) || "To";
   const duration = meaningful(segment.duration);
+  const isReturn = meaningful(segment.journeyDirection).toLowerCase() === "return";
+  const routeLabel = segmentCount === 1
+    ? `ROUTE DETAILS · <b lang="ku" dir="rtl">وردەکاری ڕێگا</b>`
+    : isReturn
+      ? `RETURN ROUTE · <b lang="ku" dir="rtl">ڕێگای گەڕانەوە</b>`
+      : segmentNumber === 1
+        ? `DEPARTURE ROUTE · <b lang="ku" dir="rtl">ڕێگای ڕۆیشتن</b>`
+        : `CONNECTING ROUTE · <b lang="ku" dir="rtl">ڕێگای بەستنەوە</b>`;
   return `<article class="segment">
     <div class="segment-top">
       ${airlineIdentity(segment)}
-      <span class="flight-chip">FLIGHT ${flightNumber} · <b lang="ku" dir="rtl">فڕین ${flightNumber}</b></span>
+      <span class="flight-chip">${routeLabel}</span>
     </div>
     <div class="route">
       <div class="route-stop">
@@ -189,7 +193,7 @@ function segmentCard(segment, flightNumber) {
         <b>${display(segment.arrivalDate, "Date pending")} · ${display(segment.arrivalTime, "Time pending")}</b>
       </div>
     </div>
-    ${meaningful(segment.layoverAfter) ? `<div class="transit"><span>TRANSIT AFTER THIS FLIGHT</span><strong>${display(segment.layoverAfter)}</strong><b lang="ku" dir="rtl">ماوەی وەستان دوای ئەم فڕینە</b></div>` : ""}
+    ${meaningful(segment.layoverAfter) ? `<div class="transit"><span>CONNECTION TIME</span><strong>${display(segment.layoverAfter)}</strong><b lang="ku" dir="rtl">ماوەی ترانسێت</b></div>` : ""}
   </article>`;
 }
 
@@ -203,7 +207,7 @@ function optionPage(quote, option, index, segments, pageIndex, pageCount) {
   const isLastPage = pageIndex === pageCount - 1;
   return `<section class="page option-page ${segments.length > 1 ? "multi-segment" : ""}">
     <div class="content">
-      ${brandHeader(`Prepared for ${quote.customerName}`)}
+      ${brandHeader(meaningful(quote.customerName) ? `Prepared for ${quote.customerName}` : "Customer ticket option")}
       <div class="option-heading">
         <div class="option-copy">
           <span>OPTION ${String(index + 1).padStart(2, "0")} · <b lang="ku" dir="rtl">هەڵبژاردە ${String(index + 1).padStart(2, "0")}</b></span>
@@ -220,18 +224,17 @@ function optionPage(quote, option, index, segments, pageIndex, pageCount) {
         <div>${bilingualLabel("FLIGHT DETAILS", "وردەکاری فڕین")}<h3>Journey schedule${pageCount > 1 ? ` · ${pageIndex + 1} of ${pageCount}` : ""}</h3></div>
         <h4 lang="ku" dir="rtl">خشتەی گەشت</h4>
       </div>
-      <div class="segments">${segments.map((segment, segmentIndex) => segmentCard(segment, pageIndex * 2 + segmentIndex + 1)).join("")}</div>
+      <div class="segments">${segments.map((segment, segmentIndex) => segmentCard(segment, pageIndex * 2 + segmentIndex + 1, option.itinerary.segments.length)).join("")}</div>
       ${isLastPage ? `<div class="details-grid">
         ${detailCard("CHECKED BAGGAGE", "باری گەورە", baggage.checkedBaggage)}
         ${detailCard("CABIN BAGGAGE", "باری دەستی", baggage.cabinBaggage)}
-        ${detailCard("CABIN / CLASS", "پۆلی گەشت", cabinSummary(option.itinerary))}
         ${detailCard("AIRLINE", "کۆمپانیای فڕۆکەوانی", airlinesSummary(option.itinerary))}
       </div>
       ${option.notes ? `<div class="option-note">${bilingualLabel("OPTION NOTES", "تێبینی ئەم هەڵبژاردەیە")}<p>${escapeHtml(option.notes)}</p></div>` : ""}
       <div class="notice bilingual-notice">
         <p><strong>Important:</strong> This is a price quotation, not a confirmed reservation or airline ticket. Price and availability can change until ticketing.</p>
         <p lang="ku" dir="rtl"><strong>تێبینی گرنگ:</strong> ئەمە تەنها پێشنیاری نرخە، نەک ڕیزەرفەیشنی پشتڕاستکراوە یان بلیتی فڕۆکە. نرخ و بەردەستبوون تا کاتی بلیتکردن دەتوانێت بگۆڕێت.</p>
-      </div>` : `<div class="notice bilingual-notice"><p><strong>Continued:</strong> Remaining flights and fare details continue on the next page.</p><p lang="ku" dir="rtl"><strong>بەردەوامە:</strong> فڕینەکانی تر و وردەکاری نرخ لە لاپەڕەی داهاتوو بەردەوام دەبن.</p></div>`}
+      </div>` : `<div class="notice bilingual-notice"><p><strong>Continued:</strong> Remaining route segments and price details continue on the next page.</p><p lang="ku" dir="rtl"><strong>بەردەوامە:</strong> بەشەکانی تری ڕێگا و وردەکاری نرخ لە لاپەڕەی داهاتوو بەردەوام دەبن.</p></div>`}
     </div>
     ${footer(quote.reference)}
   </section>`;
@@ -258,14 +261,15 @@ function styles() {
     .option-heading{display:grid;grid-template-columns:minmax(0,1fr) 52mm;overflow:hidden;margin-bottom:5mm;border:1px solid #d5e3e6;border-radius:5px;background:#f7fbfb}.option-copy{padding:4.5mm 5mm;border-top:3px solid #8acbd0}.option-copy>span{color:#657084;font-size:8.5px;font-weight:800}.option-copy>span b{color:#170c79;font-weight:400}.option-heading h2{margin:1.2mm 0 .6mm;color:#170c79;font-size:22px}.option-heading p{margin:0;color:#657084;font-size:11px}.price{display:grid;align-content:center;padding:4mm;background:#170c79;color:#fff;text-align:right}.price .label-en{color:#8acbd0}.price .label-ku{color:#efe3ca}.price>strong{display:block;margin-top:1.5mm;font-size:23px;line-height:1.05}.price>small{margin-top:1mm;color:#dbe1ff;font-weight:800}.journey-heading{margin-bottom:2.5mm}
     .segments{display:grid;gap:3mm}.segment{overflow:hidden;border:1px solid #d6e4e7;border-radius:5px;background:#fff;break-inside:avoid}.segment-top{display:flex;align-items:center;justify-content:space-between;padding:2.5mm 3.5mm;border-bottom:1px solid #dce8ea;background:#f8fbfb}.airline{display:flex;align-items:center;gap:3mm}.airline img,.airline>span{width:10mm;height:10mm;border:1px solid #dce8ea;border-radius:4px;background:#fff;object-fit:contain;padding:1mm}.airline>span{display:grid;place-items:center;color:#170c79;font-size:8px;font-weight:800}.airline strong,.airline small{display:block}.airline strong{color:#170c79;font-size:12px}.airline small{margin-top:.3mm;color:#657084;font-size:9px}.flight-chip{padding:1.3mm 2mm;border-radius:3px;background:#efe3ca;color:#170c79;font-size:8px;font-weight:800}.flight-chip b{font-weight:400}
     .route{display:grid;grid-template-columns:minmax(0,1fr) 42mm minmax(0,1fr);align-items:center;padding:3.5mm}.route-stop .label-en,.route-stop .label-ku{color:#657084}.route-stop>strong,.route-stop>span,.route-stop>b{display:block}.route-stop>strong{margin-top:1mm;color:#170c79;font-size:20px}.route-stop>span{color:#657084;min-height:4mm}.route-stop>b{margin-top:1mm;font-size:10.5px}.arrival{text-align:right}.route-line{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center}.route-line i{height:1px;background:#8acbd0}.route-line>span{display:grid;place-items:center;width:7mm;height:7mm;border-radius:50%;background:#170c79;color:#fff;font-size:14px}.route-line small{grid-column:1/-1;margin-top:1mm;color:#657084;font-size:9px}.route-line em{display:block;color:#170c79;font-size:8.5px;font-style:normal}.transit{display:flex;align-items:center;gap:2mm;padding:2mm 3.5mm;border-top:1px dashed #8acbd0;background:#edf7f8;color:#657084}.transit span{font-size:8px;font-weight:800}.transit strong{color:#170c79}.transit b{margin-left:auto;color:#170c79;font-weight:400}
-    .details-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2.5mm;margin-top:3.5mm}.detail-card,.option-note{padding:3mm;border:1px solid #d6e4e7;border-radius:5px;background:#f8fbfb}.detail-card .label-en,.detail-card .label-ku,.option-note .label-en,.option-note .label-ku{color:#657084}.detail-card strong{display:block;margin-top:1mm;color:#172033;font-size:11px}.detail-card small{display:block;margin-top:.6mm;color:#170c79;font-size:8.5px}.option-note{margin-top:2.5mm}.option-note p{margin:1mm 0 0}.multi-segment .brand{margin-bottom:4mm}.multi-segment .option-heading{margin-bottom:3mm}.multi-segment .option-copy{padding:3.5mm 4mm}.multi-segment .option-heading h2{font-size:19px}.multi-segment .segment-top{padding:2mm 3mm}.multi-segment .route{padding:2.5mm 3mm}.multi-segment .route-stop>strong{font-size:17px}.multi-segment .details-grid{margin-top:2.5mm}.multi-segment .detail-card{padding:2.3mm}.multi-segment .notice{margin-top:2.5mm}
+    .details-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5mm;margin-top:3.5mm}.detail-card,.option-note{padding:3mm;border:1px solid #d6e4e7;border-radius:5px;background:#f8fbfb}.detail-card .label-en,.detail-card .label-ku,.option-note .label-en,.option-note .label-ku{color:#657084}.detail-card strong{display:block;margin-top:1mm;color:#172033;font-size:11px}.detail-card small{display:block;margin-top:.6mm;color:#170c79;font-size:8.5px}.option-note{margin-top:2.5mm}.option-note p{margin:1mm 0 0}.multi-segment .brand{margin-bottom:4mm}.multi-segment .option-heading{margin-bottom:3mm}.multi-segment .option-copy{padding:3.5mm 4mm}.multi-segment .option-heading h2{font-size:19px}.multi-segment .segment-top{padding:2mm 3mm}.multi-segment .route{padding:2.5mm 3mm}.multi-segment .route-stop>strong{font-size:17px}.multi-segment .details-grid{margin-top:2.5mm}.multi-segment .detail-card{padding:2.3mm}.multi-segment .notice{margin-top:2.5mm}
     .print-button{position:fixed;right:18px;bottom:18px;padding:12px 18px;border:1px solid #8acbd0;border-radius:7px;background:#170c79;color:#fff;font-weight:800;cursor:pointer;box-shadow:0 10px 28px rgba(23,12,121,.24);z-index:20}
     @media print{html,body{background:#fff}.print-button{display:none}}@media screen and (max-width:820px){.page{width:100%;height:auto;min-height:297mm;padding:12mm 7mm 16mm}.brand{align-items:flex-start;flex-direction:column}.document-mark{text-align:left}.hero,.option-heading{grid-template-columns:1fr}.hero{box-shadow:inset 0 -1.5mm 0 #8acbd0}.customer-guidance,.bilingual-notice{grid-template-columns:1fr}.customer-guidance p:last-child,.bilingual-notice p:last-child{text-align:right}.comparison-card{grid-template-columns:10mm minmax(0,1fr)}.comparison-price{grid-column:2;border-left:0;border-top:1px solid #dce8ea;padding:2mm 0 0;text-align:left}.price{text-align:left}.route{grid-template-columns:1fr}.arrival{text-align:left}.route-line{margin:2mm 0}.details-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bilingual-heading{align-items:flex-start;flex-direction:column}}
   `;
 }
 
 function generateTicketPriceHtml(quote) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flight Quotation - ${escapeHtml(quote.customerName)}</title><style>${styles()}</style></head><body><button class="print-button" onclick="window.print()">Print / Save PDF</button>${summaryPages(quote)}${quote.options.map((option, index) => optionPages(quote, option, index)).join("")}</body></html>`;
+  const title = meaningful(quote.customerName) ? `Flight Quotation - ${quote.customerName}` : "Flight Quotation - MK Business and Travel";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>${styles()}</style></head><body><button class="print-button" onclick="window.print()">Print / Save PDF</button>${summaryPages(quote)}${quote.options.map((option, index) => optionPages(quote, option, index)).join("")}</body></html>`;
 }
 
 module.exports = { generateTicketPriceHtml };

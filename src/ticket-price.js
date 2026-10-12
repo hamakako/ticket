@@ -8,7 +8,8 @@ function compact(value, maxLength = 200) {
 
 function customerName(value) {
   const name = compact(value, 120);
-  if (name.length < 2) throw new Error("Please enter the customer name.");
+  if (!name) return "";
+  if (name.length < 2) throw new Error("Customer name must contain at least two characters when provided.");
   if (!/^[\p{L}\p{M}\d'’ .-]+$/u.test(name)) {
     throw new Error("Customer name contains unsupported characters.");
   }
