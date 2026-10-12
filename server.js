@@ -50,6 +50,8 @@ const {
 } = require("./src/smart-trip");
 const { generateSmartTripHtml, generateUnavailableSmartTripHtml } = require("./src/smart-trip-template");
 const { fallbackSmartTripGuide } = require("./src/smart-trip-fallback");
+const { normalizeTicketPriceRequest } = require("./src/ticket-price");
+const { generateTicketPriceHtml } = require("./src/ticket-price-template");
 const {
   generateFlightHtml,
   generateFlightProposalHtml,
@@ -289,6 +291,48 @@ async function saveSmartTripTicketFiles(req, trip, options = {}) {
 
 function proposalReference() {
   return `MKQ-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function ticketPriceReference() {
+  return `MKP-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+async function saveTicketPriceFiles(input) {
+  const quote = normalizeTicketPriceRequest({
+    ...input,
+    reference: ticketPriceReference(),
+    preparedAt: new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Baghdad"
+    }).format(new Date())
+  });
+  quote.options = await Promise.all(quote.options.map(async (option) => ({
+    ...option,
+    itinerary: await withAirlineLogos(option.itinerary)
+  })));
+
+  const html = generateTicketPriceHtml(quote);
+  const htmlName = buildFileName(quote.customerName, quote.reference, "html", "Ticket_Prices");
+  const pdfName = buildFileName(quote.customerName, quote.reference, "pdf", "Ticket_Prices");
+  const htmlPath = path.join(HTML_DIR, htmlName);
+  const pdfPath = path.join(PDF_DIR, pdfName);
+
+  try {
+    fs.writeFileSync(htmlPath, html, "utf8");
+    await renderHtmlToPdf(html, pdfPath);
+  } catch (error) {
+    deleteGeneratedFile(htmlPath);
+    deleteGeneratedFile(pdfPath);
+    throw error;
+  }
+
+  return {
+    reference: quote.reference,
+    html: { fileName: htmlName, url: `/generated/${encodeURIComponent(htmlName)}` },
+    pdf: { fileName: pdfName, url: `/generated-pdf/${encodeURIComponent(pdfName)}` }
+  };
 }
 
 function passengerName(value) {
@@ -759,6 +803,33 @@ app.post("/api/process-text/:type", asyncRoute(async (req, res) => {
   }
 
   res.json({ data, sourceFile: "" });
+}));
+
+app.post("/api/ticket-prices/extract", upload.single("document"), asyncRoute(async (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "Please upload a ticket screenshot, image, or PDF first." });
+    return;
+  }
+
+  try {
+    const data = await extractDocument("flight", {
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+      originalname: req.file.originalname
+    });
+    res.json({ data });
+  } finally {
+    deleteSourceFile(req.file.path);
+  }
+}));
+
+app.post("/api/ticket-prices/extract-text", asyncRoute(async (req, res) => {
+  res.json({ data: await extractText("flight", req.body?.text) });
+}));
+
+app.post("/api/ticket-prices/generate", asyncRoute(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ generated: await saveTicketPriceFiles(req.body) });
 }));
 
 app.get("/api/flight-search/airports", asyncRoute(async (req, res) => {
