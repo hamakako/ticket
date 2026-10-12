@@ -24,7 +24,8 @@ const airlineCodes = new Map([
   ["egyptair", "MS"],
   ["saudia", "SV"],
   ["etihad airways", "EY"],
-  ["kuwait airways", "KU"]
+  ["kuwait airways", "KU"],
+  ["eurowings", "EW"]
 ]);
 
 fs.mkdirSync(LOGO_DIR, { recursive: true });

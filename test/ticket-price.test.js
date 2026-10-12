@@ -62,8 +62,8 @@ test("continues long multi-flight options on additional A4 pages", () => {
     { ...input.options[0].itinerary.segments[0], flightNumber: "TK319" }
   );
   const html = generateTicketPriceHtml(normalizeTicketPriceRequest(input));
-  assert.match(html, /Journey Schedule · 1 of 2/);
-  assert.match(html, /Journey Schedule · 2 of 2/);
+  assert.match(html, /Journey schedule · 1 of 2/);
+  assert.match(html, /Journey schedule · 2 of 2/);
   assert.equal((html.match(/class="page /g) || []).length, 3);
 });
 

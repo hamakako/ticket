@@ -816,7 +816,7 @@ app.post("/api/ticket-prices/extract", upload.single("document"), asyncRoute(asy
       path: req.file.path,
       mimetype: req.file.mimetype,
       originalname: req.file.originalname
-    });
+    }, { profile: "ticket-price" });
     res.json({ data });
   } finally {
     deleteSourceFile(req.file.path);
@@ -824,7 +824,7 @@ app.post("/api/ticket-prices/extract", upload.single("document"), asyncRoute(asy
 }));
 
 app.post("/api/ticket-prices/extract-text", asyncRoute(async (req, res) => {
-  res.json({ data: await extractText("flight", req.body?.text) });
+  res.json({ data: await extractText("flight", req.body?.text, { profile: "ticket-price" }) });
 }));
 
 app.post("/api/ticket-prices/generate", asyncRoute(async (req, res) => {

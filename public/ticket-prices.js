@@ -67,6 +67,32 @@ function normalizeExtractedItinerary(data = {}) {
   };
 }
 
+function extractionStatus(itinerary, sourceLabel) {
+  const requiredFields = [
+    "airline",
+    "flightNumber",
+    "class",
+    "departureAirport",
+    "departureCity",
+    "departureDate",
+    "departureTime",
+    "arrivalAirport",
+    "arrivalCity",
+    "arrivalDate",
+    "arrivalTime",
+    "duration"
+  ];
+  const missingCount = (itinerary.segments || []).reduce((total, segment) => (
+    total + requiredFields.filter((field) => !String(segment?.[field] || "").trim()).length
+  ), 0) + ["checkedBaggage", "cabinBaggage"].filter((field) => (
+    !String(itinerary.baggage?.[field] || "").trim()
+  )).length;
+  if (!missingCount) {
+    return `${sourceLabel} extracted and all essential flight details were filled. Please review them below.`;
+  }
+  return `${sourceLabel} extracted. AI filled every supported detail; ${missingCount} field${missingCount === 1 ? " was" : "s were"} not shown clearly in the source and should be reviewed.`;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -188,7 +214,7 @@ async function extractFile(index) {
   formData.append("document", file);
   const body = await api("/api/ticket-prices/extract", { method: "POST", body: formData });
   state.options[index].itinerary = normalizeExtractedItinerary(body.data);
-  state.options[index].status = "Ticket details extracted. Review and edit them below.";
+  state.options[index].status = extractionStatus(state.options[index].itinerary, "Uploaded ticket");
   state.options[index].statusKind = "ok";
   renderOptions();
 }
@@ -206,7 +232,7 @@ async function extractText(index) {
     body: JSON.stringify({ text })
   });
   state.options[index].itinerary = normalizeExtractedItinerary(body.data);
-  state.options[index].status = "Pasted ticket details extracted. Review and edit them below.";
+  state.options[index].status = extractionStatus(state.options[index].itinerary, "Pasted ticket text");
   state.options[index].statusKind = "ok";
   renderOptions();
 }
