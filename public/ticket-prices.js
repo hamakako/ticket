@@ -152,6 +152,21 @@ function renderOptions() {
           ${option.itinerary.segments.map((segment, segmentIndex) => `
             <section class="ticket-price-segment">
               <div class="ticket-price-segment-heading"><strong>Flight ${segmentIndex + 1}</strong>${option.itinerary.segments.length > 1 ? `<button class="danger-button" type="button" data-remove-segment="${optionIndex}:${segmentIndex}">Remove</button>` : ""}</div>
+              <details class="ticket-price-segment-ai" data-segment-ai="${optionIndex}:${segmentIndex}">
+                <summary>Extract this flight with AI</summary>
+                <div class="ticket-price-segment-ai-grid">
+                  <div>
+                    <label for="segment-file-${optionIndex}-${segmentIndex}">Upload screenshot, image, or PDF</label>
+                    <input id="segment-file-${optionIndex}-${segmentIndex}" type="file" data-segment-file-source="${optionIndex}:${segmentIndex}" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+                    <button class="secondary-button small-button" type="button" data-extract-segment-file="${optionIndex}:${segmentIndex}">Extract Uploaded Route</button>
+                  </div>
+                  <div>
+                    <label for="segment-text-${optionIndex}-${segmentIndex}">Or paste this flight / route</label>
+                    <textarea id="segment-text-${optionIndex}-${segmentIndex}" maxlength="100000" data-segment-text-source="${optionIndex}:${segmentIndex}" placeholder="Paste only this new flight or route here..."></textarea>
+                    <button class="secondary-button small-button" type="button" data-extract-segment-text="${optionIndex}:${segmentIndex}">Extract Pasted Route</button>
+                  </div>
+                </div>
+              </details>
               <div class="ticket-price-segment-grid">
                 ${segmentInput("Airline", "airline", segment.airline, optionIndex, segmentIndex, 'placeholder="Airline name"')}
                 ${segmentInput("Flight number", "flightNumber", segment.flightNumber, optionIndex, segmentIndex, 'placeholder="TK317"')}
@@ -237,6 +252,53 @@ async function extractText(index) {
   renderOptions();
 }
 
+function applySegmentExtraction(optionIndex, segmentIndex, data, sourceLabel) {
+  const option = state.options[optionIndex];
+  if (!option) return;
+  const extracted = normalizeExtractedItinerary(data);
+  option.itinerary.segments.splice(segmentIndex, 1, ...extracted.segments);
+  if (extracted.baggage.checkedBaggage) {
+    option.itinerary.baggage.checkedBaggage = extracted.baggage.checkedBaggage;
+  }
+  if (extracted.baggage.cabinBaggage) {
+    option.itinerary.baggage.cabinBaggage = extracted.baggage.cabinBaggage;
+  }
+  option.status = extractionStatus(extracted, sourceLabel);
+  option.statusKind = "ok";
+  renderOptions();
+  document.querySelector(`[data-segment-ai="${optionIndex}:${segmentIndex}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function extractSegmentFile(optionIndex, segmentIndex) {
+  const sourceKey = `${optionIndex}:${segmentIndex}`;
+  const file = document.querySelector(`[data-segment-file-source="${sourceKey}"]`)?.files?.[0];
+  if (!file) {
+    setOptionStatus(optionIndex, "Please choose a screenshot, image, or PDF for this flight first.", "error");
+    return;
+  }
+  setOptionStatus(optionIndex, `Gemini is extracting Flight ${segmentIndex + 1}...`);
+  const formData = new FormData();
+  formData.append("document", file);
+  const body = await api("/api/ticket-prices/extract", { method: "POST", body: formData });
+  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Flight ${segmentIndex + 1}`);
+}
+
+async function extractSegmentText(optionIndex, segmentIndex) {
+  const sourceKey = `${optionIndex}:${segmentIndex}`;
+  const text = document.querySelector(`[data-segment-text-source="${sourceKey}"]`)?.value?.trim();
+  if (!text) {
+    setOptionStatus(optionIndex, "Please paste the new flight or route first.", "error");
+    return;
+  }
+  setOptionStatus(optionIndex, `Gemini is extracting Flight ${segmentIndex + 1}...`);
+  const body = await api("/api/ticket-prices/extract-text", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  });
+  applySegmentExtraction(optionIndex, segmentIndex, body.data, `Flight ${segmentIndex + 1}`);
+}
+
 function updateStateFromField(target) {
   const optionIndex = Number(target.dataset.optionIndex);
   const option = state.options[optionIndex];
@@ -265,8 +327,14 @@ optionsRoot.addEventListener("click", async (event) => {
       return;
     }
     if (button.dataset.addSegment !== undefined) {
-      state.options[Number(button.dataset.addSegment)].itinerary.segments.push(blankSegment());
+      const optionIndex = Number(button.dataset.addSegment);
+      const segmentIndex = state.options[optionIndex].itinerary.segments.push(blankSegment()) - 1;
       renderOptions();
+      const extractor = document.querySelector(`[data-segment-ai="${optionIndex}:${segmentIndex}"]`);
+      if (extractor) {
+        extractor.open = true;
+        extractor.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
     if (button.dataset.removeSegment !== undefined) {
@@ -275,10 +343,22 @@ optionsRoot.addEventListener("click", async (event) => {
       renderOptions();
       return;
     }
+    if (button.dataset.extractSegmentFile !== undefined) {
+      const [optionIndex, segmentIndex] = button.dataset.extractSegmentFile.split(":").map(Number);
+      await extractSegmentFile(optionIndex, segmentIndex);
+    }
+    if (button.dataset.extractSegmentText !== undefined) {
+      const [optionIndex, segmentIndex] = button.dataset.extractSegmentText.split(":").map(Number);
+      await extractSegmentText(optionIndex, segmentIndex);
+    }
     if (button.dataset.extractFile !== undefined) await extractFile(Number(button.dataset.extractFile));
     if (button.dataset.extractText !== undefined) await extractText(Number(button.dataset.extractText));
   } catch (error) {
-    const index = Number(button.dataset.extractFile ?? button.dataset.extractText);
+    const source = button.dataset.extractSegmentFile
+      ?? button.dataset.extractSegmentText
+      ?? button.dataset.extractFile
+      ?? button.dataset.extractText;
+    const index = Number(String(source).split(":")[0]);
     setOptionStatus(index, error.message, "error");
   }
 });

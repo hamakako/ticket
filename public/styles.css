@@ -244,6 +244,51 @@ button:disabled {
   color: var(--navy);
 }
 
+.ticket-price-segment-ai {
+  margin-bottom: 12px;
+  border: 1px dashed var(--teal);
+  border-radius: 8px;
+  background: #f3f9fa;
+}
+
+.ticket-price-segment-ai summary {
+  padding: 10px 12px;
+  color: var(--navy);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ticket-price-segment-ai[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.ticket-price-segment-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.ticket-price-segment-ai-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.ticket-price-segment-ai-grid label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ticket-price-segment-ai-grid input[type="file"] {
+  max-width: none;
+}
+
+.ticket-price-segment-ai-grid textarea {
+  min-height: 72px;
+}
+
 .ticket-price-segment-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1025,6 +1070,7 @@ label textarea {
   .ticket-price-core-grid,
   .ticket-price-source-grid,
   .ticket-price-segment-grid,
+  .ticket-price-segment-ai-grid,
   .ticket-price-baggage-grid,
   .ticket-price-downloads {
     grid-template-columns: 1fr;
