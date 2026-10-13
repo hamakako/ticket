@@ -39,4 +39,16 @@ Hotel vouchers include a direct map search link created from the extracted hotel
 
 Records, uploaded originals, generated HTML/PDF itineraries, and boarding-pass HTML files are automatically deleted after 7 days.
 
+## Chrome Extension
+
+The unpacked Manifest V3 extension is in `chrome-extension/`. It reads text from the active booking page, captures the visible tab, sends both to the server-side Gemini extractor, saves the extracted flight or hotel record, and generates branded HTML and PDF files in one action. The temporary screenshot is deleted immediately after extraction.
+
+Build the downloadable package with:
+
+```bash
+npm run build:extension
+```
+
+The ZIP is written to `public/downloads/mk-business-travel-chrome-extension.zip` and is linked from `/chrome-extension.html`.
+
 Note: free hosts may sleep after inactivity and can have temporary storage limits. For permanent business use, use a paid host or external database/storage.

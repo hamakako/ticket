@@ -5,6 +5,7 @@
   "description": "Local MK Business and Travel itinerary generator",
   "main": "server.js",
   "scripts": {
+    "build:extension": "rm -f public/downloads/mk-business-travel-chrome-extension.zip && mkdir -p public/downloads && cd chrome-extension && zip -qr ../public/downloads/mk-business-travel-chrome-extension.zip .",
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node --test",

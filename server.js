@@ -30,6 +30,7 @@ const {
 } = require("./src/db");
 const {
   detectSmartTripDestination,
+  extractBrowserPage,
   extractDocument,
   extractPassportName,
   extractSmartTripHotel,
@@ -820,6 +821,55 @@ app.post("/api/process-text/:type", asyncRoute(async (req, res) => {
   }
 
   res.json({ data, sourceFile: "" });
+}));
+
+app.post("/api/extension/generate/:type", upload.single("screenshot"), asyncRoute(async (req, res) => {
+  const type = req.params.type;
+  if (type !== "flight" && type !== "hotel") {
+    res.status(400).json({ error: "Choose Flight Ticket or Hotel Voucher in the extension." });
+    return;
+  }
+
+  const pageText = String(req.body?.pageText || "").trim().slice(0, 100000);
+  if (!req.file && pageText.length < 10) {
+    res.status(400).json({ error: "The extension could not read or capture the current page." });
+    return;
+  }
+
+  try {
+    let data = await extractBrowserPage(type, {
+      pageText,
+      screenshot: req.file ? {
+        path: req.file.path,
+        mimetype: req.file.mimetype,
+        originalname: req.file.originalname
+      } : null
+    });
+    if (type === "hotel") {
+      data = normalizeHotelData(await enrichHotelData(data));
+    }
+
+    const design = normalizeTicketDesign(req.body?.design);
+    const record = type === "flight"
+      ? createFlightItinerary(normalizeFlightData(data), "")
+      : createHotelItinerary(normalizeHotelData(data), "");
+    const printableRecord = type === "flight" ? await withAirlineLogos(record) : record;
+    const html = saveHtmlFile(type, printableRecord, design);
+    const pdf = await savePdfFile(type, printableRecord, design);
+
+    res.status(201).json({
+      record: {
+        id: record.id,
+        type,
+        title: type === "flight"
+          ? record.passengers?.[0]?.fullName || "Flight itinerary"
+          : record.hotelName || record.guests?.[0]?.fullName || "Hotel voucher"
+      },
+      generated: { html, pdf }
+    });
+  } finally {
+    if (req.file?.path) deleteSourceFile(req.file.path);
+  }
 }));
 
 app.post("/api/ticket-prices/extract", upload.single("document"), asyncRoute(async (req, res) => {

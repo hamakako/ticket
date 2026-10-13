@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "MK Ticket & Hotel Generator",
+  "version": "1.0.0",
+  "description": "Create branded MK flight itineraries and hotel vouchers from the page currently open in Chrome.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://mk-ticket-itinerary.onrender.com/*",
+    "file:///*"
+  ],
+  "action": {
+    "default_title": "Create MK itinerary",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "mk-logo.png"
+    }
+  },
+  "icons": {
+    "128": "mk-logo.png"
+  }
+}

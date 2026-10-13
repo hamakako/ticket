@@ -465,6 +465,32 @@ async function extractDocument(type, file, options = {}) {
   ]);
 }
 
+async function extractBrowserPage(type, source = {}, options = {}) {
+  const pageText = String(source.pageText || "").trim().slice(0, 100000);
+  const parts = [
+    { text: extractionPrompt(type, "current booking web page", options) }
+  ];
+
+  if (pageText.length >= 10) {
+    parts.push({ text: `CURRENT PAGE TEXT START\n${pageText}\nCURRENT PAGE TEXT END` });
+  }
+
+  if (source.screenshot?.path) {
+    parts.push({
+      inline_data: {
+        mime_type: source.screenshot.mimetype,
+        data: fs.readFileSync(source.screenshot.path).toString("base64")
+      }
+    });
+  }
+
+  if (parts.length === 1) {
+    throw new Error("The extension could not read or capture the current page.");
+  }
+
+  return extractWithGemini(type, parts);
+}
+
 async function extractText(type, sourceText, options = {}) {
   const text = String(sourceText || "").trim();
   if (text.length < 10) {
@@ -495,6 +521,7 @@ async function extractPassportName(file) {
 
 module.exports = {
   detectSmartTripDestination,
+  extractBrowserPage,
   extractDocument,
   extractPassportName,
   extractSmartTripHotel,

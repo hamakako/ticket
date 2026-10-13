@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MK Ticket & Hotel Generator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="brand">
+    <img src="mk-logo.png" alt="MK Business and Travel">
+    <div>
+      <strong>MK Business and Travel</strong>
+      <span>Current page generator</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <p class="eyebrow">DIRECT AI EXTRACTION</p>
+      <h1>Create from this page</h1>
+      <p>Gemini reads the booking page currently open in Chrome and creates your branded document.</p>
+    </section>
+
+    <div class="page-card">
+      <span>Current page</span>
+      <strong data-page-title>Reading page title...</strong>
+    </div>
+
+    <fieldset class="type-picker">
+      <legend>Document type</legend>
+      <button class="type-button active" type="button" data-type="flight">
+        <span>01</span>
+        <strong>Flight Ticket</strong>
+      </button>
+      <button class="type-button" type="button" data-type="hotel">
+        <span>02</span>
+        <strong>Hotel Voucher</strong>
+      </button>
+    </fieldset>
+
+    <label class="design-picker">
+      Design
+      <select data-design>
+        <option value="modern">Modern</option>
+        <option value="executive">Executive</option>
+        <option value="minimal">Minimal</option>
+      </select>
+    </label>
+
+    <button class="generate-button" type="button" data-generate>Create Flight Ticket</button>
+
+    <div class="progress hidden" data-progress aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <div>
+        <strong data-progress-title>Reading current page...</strong>
+        <p data-progress-detail>This can take 20-60 seconds.</p>
+      </div>
+    </div>
+
+    <p class="status" data-status aria-live="polite"></p>
+
+    <section class="result hidden" data-result>
+      <span>Ready</span>
+      <strong data-result-title>Branded document created</strong>
+      <div class="result-actions">
+        <button type="button" data-open-html>Open HTML</button>
+        <button class="secondary" type="button" data-open-pdf>Open PDF</button>
+      </div>
+    </section>
+
+    <p class="privacy-note">The temporary page screenshot is deleted immediately after AI extraction.</p>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

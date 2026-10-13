@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chrome Extension | MK Business and Travel</title>
+  <link rel="stylesheet" href="/styles.css?v=20261013-extension">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block brand-with-nav">
+      <a class="brand-home" href="/">
+        <img src="/assets/mk-logo.png" alt="MK Business and Travel logo">
+        <div>
+          <h1>MK Business and Travel</h1>
+          <p>Grand Swiss Hotel, Ground Floor, Pirmam · 07500229292</p>
+        </div>
+      </a>
+      <nav class="top-nav" aria-label="Main navigation">
+        <a href="/">Itineraries</a>
+        <a href="/flight-search.html">Live Flight Search</a>
+        <a href="/ticket-edit.html">Ticket Edit</a>
+        <a href="/smart-trips.html">Smart Trip Links</a>
+        <a href="/ticket-prices.html">Ticket Prices</a>
+        <a class="active" href="/chrome-extension.html">Chrome Extension</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell extension-install-page">
+    <section class="extension-hero">
+      <div>
+        <p class="eyebrow">CHROME EXTENSION</p>
+        <h2>Create from the booking page already open</h2>
+        <p>Open any flight ticket or hotel booking page, click the MK extension, and Gemini will extract the current page and generate your branded HTML and PDF without copying text or opening the MK website first.</p>
+        <a class="primary-link" href="/downloads/mk-business-travel-chrome-extension.zip" download>Download Chrome Extension</a>
+      </div>
+      <div class="extension-preview" aria-label="Extension workflow preview">
+        <span>MK Business and Travel</span>
+        <strong>Create from this page</strong>
+        <div><b>01</b> Flight Ticket</div>
+        <div><b>02</b> Hotel Voucher</div>
+        <button type="button" disabled>Create Branded Document</button>
+      </div>
+    </section>
+
+    <section class="extension-steps">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">ONE-TIME SETUP</p>
+          <h2>Install in Chrome</h2>
+        </div>
+      </div>
+      <ol>
+        <li><span>1</span><div><strong>Download and unzip</strong><p>Download the extension ZIP above, then double-click it to create the extension folder.</p></div></li>
+        <li><span>2</span><div><strong>Open Chrome Extensions</strong><p>Enter <code>chrome://extensions</code> in Chrome's address bar.</p></div></li>
+        <li><span>3</span><div><strong>Turn on Developer mode</strong><p>Use the Developer mode switch in the upper-right corner.</p></div></li>
+        <li><span>4</span><div><strong>Load the folder</strong><p>Click <b>Load unpacked</b> and select the unzipped MK extension folder.</p></div></li>
+      </ol>
+      <p class="extension-file-note"><strong>Using a downloaded PDF?</strong> Open the extension's Details page in Chrome and turn on <b>Allow access to file URLs</b>.</p>
+    </section>
+
+    <section class="extension-privacy">
+      <strong>How it works</strong>
+      <p>The extension reads the current page text and captures the visible tab only after you click Create. The screenshot is deleted immediately after extraction. Saved records and generated documents use the website's existing seven-day retention.</p>
+    </section>
+  </main>
+</body>
+</html>

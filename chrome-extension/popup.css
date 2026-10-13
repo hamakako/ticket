@@ -1,0 +1,289 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #171a2e;
+  background: #f4f8f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 390px;
+  min-height: 540px;
+  margin: 0;
+  background: #f4f8f9;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid #d8e6e9;
+  background: #fff;
+}
+
+.brand img {
+  width: 38px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.brand div {
+  display: grid;
+  gap: 2px;
+}
+
+.brand strong {
+  color: #211587;
+  font-size: 15px;
+}
+
+.brand span,
+.intro p,
+.privacy-note,
+.progress p {
+  color: #647087;
+}
+
+.brand span {
+  font-size: 12px;
+}
+
+main {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.intro {
+  display: grid;
+  gap: 5px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #5a6480;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+
+h1 {
+  margin: 0;
+  color: #211587;
+  font-size: 27px;
+  letter-spacing: 0;
+}
+
+.intro p:last-child {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.page-card,
+.result {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid #cfe0e4;
+  border-left: 4px solid #7bcad1;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.page-card span,
+.result > span {
+  color: #667188;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.page-card strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.type-picker legend,
+.design-picker {
+  color: #5d6880;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.type-picker legend {
+  grid-column: 1 / -1;
+  margin-bottom: 7px;
+}
+
+.type-button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 9px 11px;
+  border: 1px solid #cfe0e4;
+  border-radius: 7px;
+  color: #211587;
+  background: #fff;
+}
+
+.type-button span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 6px;
+  color: #211587;
+  background: #f3e8c9;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.type-button.active {
+  border-color: #72c4cd;
+  box-shadow: 0 0 0 2px rgba(114, 196, 205, .2);
+  background: #eff9fa;
+}
+
+.design-picker {
+  display: grid;
+  gap: 7px;
+}
+
+select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid #cfe0e4;
+  border-radius: 7px;
+  color: #171a2e;
+  background: #fff;
+}
+
+.generate-button,
+.result-actions button {
+  min-height: 46px;
+  border: 1px solid #211587;
+  border-radius: 7px;
+  color: #fff;
+  background: #211587;
+  font-weight: 800;
+}
+
+.generate-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 7px;
+  background: #eaf6f7;
+}
+
+.progress div {
+  display: grid;
+  gap: 2px;
+}
+
+.progress strong {
+  color: #211587;
+  font-size: 13px;
+}
+
+.progress p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 3px solid #b7dfe3;
+  border-top-color: #211587;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.status {
+  min-height: 0;
+  margin: -6px 0 0;
+  color: #b52b2b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.status:empty {
+  display: none;
+}
+
+.result {
+  border-left-color: #279475;
+}
+
+.result > span {
+  color: #197158;
+}
+
+.result-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.result-actions button {
+  min-height: 39px;
+  font-size: 12px;
+}
+
+.result-actions .secondary {
+  border-color: #72c4cd;
+  color: #211587;
+  background: #eef8f9;
+}
+
+.privacy-note {
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.hidden {
+  display: none !important;
+}
