@@ -5,7 +5,7 @@
 3. Choose **Flight Ticket** or **Hotel Voucher**.
 4. Click the create button.
 
-The extension reads the current page text and captures the visible page. Gemini extracts the booking data on the MK server, saves the record, generates branded HTML and PDF files, and opens the HTML result automatically.
+The extension reads the current page text and captures the visible page. Gemini extracts the booking data on the MK server, saves the record, and provides buttons for the branded HTML and PDF files.
 
 The temporary screenshot is deleted immediately after extraction. Saved records and generated files follow the website's seven-day retention rule.
 

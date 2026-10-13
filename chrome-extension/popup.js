@@ -84,7 +84,7 @@ async function generateFromCurrentPage() {
     }
 
     const source = await readCurrentPage(tab);
-    setBusy(true, "Gemini is extracting the details...", "The finished HTML and PDF will open automatically.");
+    setBusy(true, "Gemini is extracting the details...", "Both branded files will be ready here.");
 
     const form = new FormData();
     form.append("pageText", source.pageText);
@@ -105,7 +105,6 @@ async function generateFromCurrentPage() {
     };
     document.querySelector("[data-result-title]").textContent = payload.record.title || "Branded document created";
     resultNode.classList.remove("hidden");
-    await chrome.tabs.create({ url: generatedUrls.html });
   } catch (error) {
     setStatus(error.message || "The document could not be generated.");
   } finally {
